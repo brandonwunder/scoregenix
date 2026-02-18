@@ -5,6 +5,7 @@ import { Story } from "@/components/landing/story";
 import { TrackRecord } from "@/components/landing/track-record";
 import { Testimonials } from "@/components/landing/testimonials";
 import { HowItWorks } from "@/components/landing/how-it-works";
+import { Guarantee } from "@/components/landing/guarantee";
 import { Pricing } from "@/components/landing/pricing";
 import { CTA } from "@/components/landing/cta";
 
@@ -12,12 +13,13 @@ export default function Home() {
   return (
     <PageShell>
       <Hero />
-      <SocialProof />
-      <Story />
       <TrackRecord />
+      <Story />
       <Testimonials />
       <HowItWorks />
+      <Guarantee />
       <Pricing />
+      <SocialProof />
       <CTA />
     </PageShell>
   );
