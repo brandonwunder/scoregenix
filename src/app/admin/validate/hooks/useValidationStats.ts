@@ -20,10 +20,16 @@ interface ValidationStats {
 export function useValidationStats(rows: UploadRow[]): ValidationStats {
   return useMemo(() => {
     const total = rows.length;
-    const correct = rows.filter((r) => r.validationStatus === 'CORRECT').length;
-    const flagged = rows.filter((r) => r.validationStatus === 'FLAGGED').length;
-    const uncertain = rows.filter((r) => r.validationStatus === 'UNCERTAIN').length;
-    const corrected = rows.filter((r) => r.validationStatus === 'CORRECTED').length;
+
+    const counts = rows.reduce((acc, r) => {
+      acc[r.validationStatus] = (acc[r.validationStatus] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const correct = counts.CORRECT || 0;
+    const flagged = counts.FLAGGED || 0;
+    const uncertain = counts.UNCERTAIN || 0;
+    const corrected = counts.CORRECTED || 0;
 
     const successRate = total > 0 ? ((correct + corrected) / total) * 100 : 0;
 
