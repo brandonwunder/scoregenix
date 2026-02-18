@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, PLAN_PRICES } from "@/lib/stripe";
+import { getStripe, getPlanPrices } from "@/lib/stripe";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
@@ -14,12 +14,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { plan, email, name, password } = checkoutSchema.parse(body);
 
-    const priceId = PLAN_PRICES[plan];
+    const priceId = getPlanPrices()[plan];
     if (!priceId) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
