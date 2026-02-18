@@ -1,3 +1,4 @@
+export { ColumnMappingFeedback } from './ColumnMappingFeedback';
 export { HeroStatsBar } from './HeroStatsBar';
 export { EnhancedUploadZone } from './EnhancedUploadZone';
 export { ValidationPipelineVisualizer } from './ValidationPipelineVisualizer';
