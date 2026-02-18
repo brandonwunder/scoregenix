@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -6,9 +7,11 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <img
+            <Image
               src="/images/logo.png"
               alt="ScoreGenix"
+              width={96}
+              height={32}
               className="h-8 w-auto opacity-60"
             />
             <span className="text-xs text-white/30">

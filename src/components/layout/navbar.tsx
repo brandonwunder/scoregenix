@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -29,10 +30,13 @@ export function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center">
-          <img
+          <Image
             src="/images/logo.png"
-            alt="ScoreGenix — The Science of Winning"
+            alt="ScoreGenix"
+            width={120}
+            height={40}
             className="h-10 w-auto"
+            priority
           />
         </Link>
 
