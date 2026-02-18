@@ -69,7 +69,7 @@ export function SocialProof() {
               transition={{ duration: 0.5, delay: 0.1 * (i + 1) }}
               className="group flex flex-col items-center gap-3 text-center"
             >
-              <div className="relative h-16 w-full flex items-center justify-center grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300">
+              <div className="relative h-16 w-full flex items-center justify-center grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-150 group-hover:z-10 group-hover:drop-shadow-2xl transition-all duration-300 cursor-pointer">
                 <Image
                   src={pub.logo}
                   alt={pub.name}
