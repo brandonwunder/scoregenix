@@ -245,6 +245,8 @@ function AdminDashboardPage() {
   const [loadingBets, setLoadingBets] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [fetchingAllOdds, setFetchingAllOdds] = useState(false);
+  const [oddsResult, setOddsResult] = useState<string | null>(null);
 
   // Auto-animate refs
   const [gamesTableRef] = useAutoAnimate();
@@ -338,6 +340,26 @@ function AdminDashboardPage() {
     }
   };
 
+  const handleFetchAllOdds = async () => {
+    setFetchingAllOdds(true);
+    setOddsResult(null);
+    try {
+      const res = await fetch("/api/odds/fetch-all", {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to fetch odds");
+      const data = await res.json();
+      setOddsResult(
+        `Updated ${data.totalUpdated} games across ${Object.keys(data.bySport || {}).length} sports`
+      );
+      fetchGames(); // Refresh games to show new odds
+    } catch {
+      setOddsResult("Failed to fetch odds. Please try again.");
+    } finally {
+      setFetchingAllOdds(false);
+    }
+  };
+
   const liveGames = games.filter((g) => g.status === "IN_PROGRESS");
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -380,6 +402,20 @@ function AdminDashboardPage() {
                 {syncResult}
               </motion.span>
             )}
+            {oddsResult && (
+              <motion.span
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className={cn(
+                  "text-xs",
+                  oddsResult.includes("failed")
+                    ? "text-red-400"
+                    : "text-emerald-400"
+                )}
+              >
+                {oddsResult}
+              </motion.span>
+            )}
             <Button
               onClick={handleSync}
               disabled={syncing}
@@ -394,6 +430,24 @@ function AdminDashboardPage() {
                 <>
                   <RefreshCwIcon className="mr-2 h-4 w-4" />
                   Sync Games
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={handleFetchAllOdds}
+              disabled={fetchingAllOdds}
+              variant="outline"
+              className="bg-purple-500/20 font-semibold text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50 border-purple-500/30"
+            >
+              {fetchingAllOdds ? (
+                <>
+                  <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
+                  Fetching Odds...
+                </>
+              ) : (
+                <>
+                  <TrendingUpIcon className="mr-2 h-4 w-4" />
+                  Fetch All Odds
                 </>
               )}
             </Button>

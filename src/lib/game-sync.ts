@@ -64,9 +64,12 @@ export async function syncAllSportsForDate(date: Date): Promise<{
     bySport[sport.name] = count;
     total += count;
 
-    // Fetch odds once for newly synced games that don't have odds yet
+    // Fetch odds for ALL games in this sport (not just newly synced)
     try {
-      await fetchAndStoreOddsForGames(sport.slug, sport.id);
+      const oddsUpdated = await fetchAndStoreOddsForGames(sport.slug, sport.id);
+      console.log(
+        `[${sport.name}] Synced ${count} games, updated ${oddsUpdated} odds`
+      );
     } catch (e) {
       console.error(`Failed to fetch odds for ${sport.name}:`, e);
     }
