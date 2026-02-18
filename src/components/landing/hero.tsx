@@ -10,19 +10,24 @@ export function Hero() {
 
   useEffect(() => {
     if (!typedRef.current) return;
-    const typed = new Typed(typedRef.current, {
-      strings: [
-        "436% Total ROI",
-        "$500K → $2.67M in 5 Years",
-        "107% Annual Returns",
-        "15 Years of Documented Trades",
-      ],
-      typeSpeed: 50,
-      backSpeed: 30,
-      backDelay: 2000,
-      loop: true,
-    });
-    return () => typed.destroy();
+
+    try {
+      const typed = new Typed(typedRef.current, {
+        strings: [
+          "436% Total ROI",
+          "$500K → $2.67M in 5 Years",
+          "107% Annual Returns",
+          "15 Years of Documented Trades",
+        ],
+        typeSpeed: 50,
+        backSpeed: 30,
+        backDelay: 2000,
+        loop: true,
+      });
+      return () => typed.destroy();
+    } catch (error) {
+      console.error("Failed to initialize Typed.js:", error);
+    }
   }, []);
 
   return (
@@ -37,6 +42,7 @@ export function Hero() {
           }}
           animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.35, 0.2] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          aria-hidden="true"
         />
         <motion.div
           className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full opacity-10"
@@ -46,6 +52,7 @@ export function Hero() {
           }}
           animate={{ x: [0, 100, 0], y: [0, -50, 0] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          aria-hidden="true"
         />
         <motion.div
           className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] rounded-full opacity-10"
@@ -55,6 +62,7 @@ export function Hero() {
           }}
           animate={{ x: [0, -80, 0], y: [0, 60, 0] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          aria-hidden="true"
         />
       </div>
 
@@ -66,6 +74,7 @@ export function Hero() {
             "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
         }}
+        aria-hidden="true"
       />
 
       {/* Content */}
@@ -115,7 +124,7 @@ export function Hero() {
           style={{ fontFamily: "'Inter', sans-serif" }}
         >
           Our proprietary algorithm analyzes 50+ performance metrics per team
-          across every major sport. 13 years of refinement. One goal: consistent,
+          across every major sport. 15+ years of refinement. One goal: consistent,
           data-driven returns.
         </motion.p>
 
