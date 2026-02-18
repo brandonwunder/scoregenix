@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { getSportConfig } from '@/lib/sport-config';
 import Image from 'next/image';
 import { useState } from 'react';
-import { FootballIcon, TrophyIcon, CircleIcon, DiscIcon, TargetIcon } from 'lucide-react';
+import { Trophy, Circle, Disc, Target } from 'lucide-react';
 
 export interface SportLogoProps {
   sportSlug: string;
@@ -58,17 +58,19 @@ function getFallbackIcon(sportSlug: string) {
   switch (sportSlug) {
     case 'nfl':
     case 'college-football':
-      return FootballIcon;
+    case 'ncaaf':
+      return Trophy; // Using Trophy for football since Football icon doesn't exist
     case 'nba':
     case 'mens-college-basketball':
-      return TrophyIcon;
+    case 'ncaab':
+      return Circle;
     case 'mlb':
-      return TargetIcon;
+      return Target;
     case 'nhl':
-      return DiscIcon;
+      return Disc;
     case 'mls':
-      return CircleIcon;
+      return Circle;
     default:
-      return CircleIcon;
+      return Circle;
   }
 }
