@@ -4,6 +4,8 @@
  * value-based heuristics for unrecognized columns.
  */
 
+import Fuse from "fuse.js";
+
 /* ───── Types ───── */
 
 export interface ColumnMapping {
@@ -100,6 +102,42 @@ const HEADER_MAP: Record<string, string> = {
   wagr: "wagerAmount",
   wgr: "wagerAmount",
 };
+
+/* ───── Fuzzy Header Matching ───── */
+
+/**
+ * Use fuzzy matching to find the best field match for an unrecognized header.
+ * This catches typos, spacing issues, and partial matches.
+ */
+function fuzzyMatchHeader(header: string): { field: string; confidence: number } | null {
+  const normalizedHeader = header.toLowerCase().trim().replace(/\s+/g, "_");
+
+  // Create search list of all known header patterns
+  const knownHeaders = Object.keys(HEADER_MAP);
+
+  const fuse = new Fuse(knownHeaders, {
+    threshold: 0.4, // Allow up to 40% difference
+    distance: 100,
+    ignoreLocation: true,
+    keys: [''],
+  });
+
+  const results = fuse.search(normalizedHeader);
+
+  if (results.length > 0 && results[0].score !== undefined) {
+    const bestMatch = results[0];
+    const matchedKey = bestMatch.item;
+    const field = HEADER_MAP[matchedKey];
+    const confidence = 1 - (bestMatch.score || 0); // Convert distance to confidence
+
+    // Only accept matches with reasonable confidence
+    if (confidence >= 0.6) {
+      return { field, confidence };
+    }
+  }
+
+  return null;
+}
 
 const REQUIRED_FIELDS = ["date", "outcome"];
 const IMPORTANT_FIELDS = ["homeTeam", "awayTeam", "teamSelected", "betType"];
@@ -200,14 +238,25 @@ export function detectColumns(
   const unmappedColumns: string[] = [];
   const ambiguousColumns: { header: string; candidates: string[] }[] = [];
 
-  // Pass 1: Header name matching
+  // Pass 1: Header name matching (exact then fuzzy)
   for (const header of headers) {
     const key = header.toLowerCase().trim().replace(/\s+/g, "_");
-    const field = HEADER_MAP[key];
+    const exactMatch = HEADER_MAP[key];
 
-    if (field && !usedFields.has(field)) {
-      mapping[header] = { field, confidence: 1.0, method: "header_match" };
-      usedFields.add(field);
+    if (exactMatch && !usedFields.has(exactMatch)) {
+      mapping[header] = { field: exactMatch, confidence: 1.0, method: "header_match" };
+      usedFields.add(exactMatch);
+    } else if (!exactMatch) {
+      // Try fuzzy matching for unrecognized headers
+      const fuzzyMatch = fuzzyMatchHeader(header);
+      if (fuzzyMatch && !usedFields.has(fuzzyMatch.field)) {
+        mapping[header] = {
+          field: fuzzyMatch.field,
+          confidence: fuzzyMatch.confidence,
+          method: "header_match",
+        };
+        usedFields.add(fuzzyMatch.field);
+      }
     }
   }
 
