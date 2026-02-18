@@ -34,11 +34,27 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { type GameData } from "@/components/dashboard/game-card";
-import { SportLogo } from "@/components/ui/sport-logo";
 import { TeamLogo } from "@/components/ui/team-logo";
 import { GameTime } from "@/components/ui/game-time";
 import { useNumberCounter, useCurrencyCounter } from "@/hooks/use-number-counter";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+
+/* ───── Helpers ───── */
+
+function getSportDisplay(sportSlug: string): { emoji: string; abbr: string } {
+  const sportMap: Record<string, { emoji: string; abbr: string }> = {
+    nfl: { emoji: "🏈", abbr: "NFL" },
+    nba: { emoji: "🏀", abbr: "NBA" },
+    mlb: { emoji: "⚾", abbr: "MLB" },
+    nhl: { emoji: "🏒", abbr: "NHL" },
+    mls: { emoji: "⚽", abbr: "MLS" },
+    ncaaf: { emoji: "🏈", abbr: "NCAAF" },
+    "college-football": { emoji: "🏈", abbr: "NCAAF" },
+    ncaab: { emoji: "🏀", abbr: "NCAAB" },
+    "mens-college-basketball": { emoji: "🏀", abbr: "NCAAB" },
+  };
+  return sportMap[sportSlug] || { emoji: "🏆", abbr: sportSlug.toUpperCase() };
+}
 
 /* ───── Types ───── */
 
@@ -484,11 +500,15 @@ export default function AdminDashboardPage() {
                           className="border-white/5 hover:bg-white/[0.03] transition-colors"
                         >
                           <TableCell>
-                            <SportLogo
-                              sportSlug={game.sportSlug}
-                              size="sm"
-                              showName
-                            />
+                            {(() => {
+                              const { emoji, abbr } = getSportDisplay(game.sportSlug);
+                              return (
+                                <Badge variant="outline" className="gap-1.5 text-xs font-medium">
+                                  <span className="text-base leading-none">{emoji}</span>
+                                  {abbr}
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-xs text-white/80">
                             <div className="flex items-center gap-2">
