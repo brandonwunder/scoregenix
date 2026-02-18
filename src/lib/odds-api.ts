@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma";
+
 const ODDS_BASE = "https://api.the-odds-api.com/v4";
 
 interface OddsOutcome {
@@ -101,4 +103,42 @@ export async function fetchOdds(
       spreadPointAway: spAway?.point ?? null,
     };
   });
+}
+
+export async function fetchAndStoreOddsForGames(
+  sportSlug: string,
+  sportId: string
+): Promise<number> {
+  const oddsData = await fetchOdds(sportSlug);
+  if (oddsData.length === 0) return 0;
+
+  let updated = 0;
+
+  for (const odds of oddsData) {
+    // Match by home team name against games that don't have odds locked yet
+    const game = await prisma.game.findFirst({
+      where: {
+        sportId,
+        oddsLockedAt: null,
+        homeTeam: odds.homeTeam,
+      },
+    });
+
+    if (game) {
+      await prisma.game.update({
+        where: { id: game.id },
+        data: {
+          homeMoneyLine: odds.moneyLineHome,
+          awayMoneyLine: odds.moneyLineAway,
+          spreadValue: odds.spreadPointHome,
+          homeSpreadOdds: odds.spreadHome,
+          awaySpreadOdds: odds.spreadAway,
+          oddsLockedAt: new Date(),
+        },
+      });
+      updated++;
+    }
+  }
+
+  return updated;
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchGamesByDate } from "@/lib/espn";
+import { fetchAndStoreOddsForGames } from "@/lib/odds-api";
 
 export async function syncGamesForSport(
   sportId: string,
@@ -21,12 +22,20 @@ export async function syncGamesForSport(
         homeScore: game.homeScore,
         awayScore: game.awayScore,
         status: game.status,
+        homeTeamAbbr: game.homeTeamAbbr,
+        awayTeamAbbr: game.awayTeamAbbr,
+        homeTeamLogo: game.homeTeamLogo,
+        awayTeamLogo: game.awayTeamLogo,
         lastSyncedAt: new Date(),
       },
       create: {
         sportId: sportId,
         homeTeam: game.homeTeam,
         awayTeam: game.awayTeam,
+        homeTeamAbbr: game.homeTeamAbbr,
+        awayTeamAbbr: game.awayTeamAbbr,
+        homeTeamLogo: game.homeTeamLogo,
+        awayTeamLogo: game.awayTeamLogo,
         gameDate: game.gameDate,
         status: game.status,
         homeScore: game.homeScore,
@@ -54,6 +63,13 @@ export async function syncAllSportsForDate(date: Date): Promise<{
     const count = await syncGamesForSport(sport.id, sport.apiKey, date);
     bySport[sport.name] = count;
     total += count;
+
+    // Fetch odds once for newly synced games that don't have odds yet
+    try {
+      await fetchAndStoreOddsForGames(sport.slug, sport.id);
+    } catch (e) {
+      console.error(`Failed to fetch odds for ${sport.name}:`, e);
+    }
   }
 
   return { total, bySport };

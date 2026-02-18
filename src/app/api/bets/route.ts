@@ -43,6 +43,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Resolve game IDs — accept either DB id or externalApiId
+    const resolvedLegs = await Promise.all(
+      data.legs.map(async (leg) => {
+        let game = await prisma.game.findUnique({
+          where: { id: leg.gameId },
+        });
+        if (!game) {
+          game = await prisma.game.findFirst({
+            where: { externalApiId: leg.gameId },
+          });
+        }
+        if (!game) {
+          throw new Error(`Game not found: ${leg.gameId}`);
+        }
+        return { ...leg, gameId: game.id };
+      })
+    );
+
     const bet = await prisma.bet.create({
       data: {
         userId: (session.user as any).id,
@@ -51,7 +69,7 @@ export async function POST(req: NextRequest) {
         potentialPayout: data.potentialPayout,
         notes: data.notes,
         legs: {
-          create: data.legs.map((leg) => ({
+          create: resolvedLegs.map((leg) => ({
             gameId: leg.gameId,
             teamSelected: leg.teamSelected,
             lineValue: leg.lineValue,

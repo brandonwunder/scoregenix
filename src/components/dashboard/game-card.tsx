@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface GameData {
+  id?: string;
   externalApiId: string;
   homeTeam: string;
   awayTeam: string;
@@ -20,6 +21,12 @@ export interface GameData {
   sportName: string;
   sportSlug: string;
   sportCategory: string;
+  homeMoneyLine?: number | null;
+  awayMoneyLine?: number | null;
+  spreadValue?: number | null;
+  homeSpreadOdds?: number | null;
+  awaySpreadOdds?: number | null;
+  oddsLockedAt?: string | null;
 }
 
 interface GameCardProps {

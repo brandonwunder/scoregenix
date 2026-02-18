@@ -1,33 +1,48 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { fetchGames } from "@/lib/espn";
+import { startOfDay, endOfDay } from "date-fns";
 
 export async function GET() {
-  const sports = await prisma.sport.findMany({ where: { active: true } });
-  const allGames: any[] = [];
+  const now = new Date();
+  const dayStart = startOfDay(now);
+  const dayEnd = endOfDay(now);
 
-  for (const sport of sports) {
-    if (!sport.apiKey) continue;
+  const games = await prisma.game.findMany({
+    where: {
+      gameDate: {
+        gte: dayStart,
+        lte: dayEnd,
+      },
+    },
+    include: {
+      sport: true,
+    },
+    orderBy: { gameDate: "asc" },
+  });
 
-    try {
-      const games = await fetchGames(sport.apiKey);
-      allGames.push(
-        ...games.map((g) => ({
-          ...g,
-          sportName: sport.name,
-          sportSlug: sport.slug,
-          sportCategory: sport.category,
-        }))
-      );
-    } catch (e) {
-      console.error(`Failed to fetch ${sport.name}:`, e);
-    }
-  }
+  const formatted = games.map((g) => ({
+    id: g.id,
+    externalApiId: g.externalApiId,
+    homeTeam: g.homeTeam,
+    awayTeam: g.awayTeam,
+    homeTeamAbbr: g.homeTeamAbbr || "",
+    awayTeamAbbr: g.awayTeamAbbr || "",
+    homeTeamLogo: g.homeTeamLogo || "",
+    awayTeamLogo: g.awayTeamLogo || "",
+    gameDate: g.gameDate.toISOString(),
+    status: g.status,
+    homeScore: g.homeScore,
+    awayScore: g.awayScore,
+    sportName: g.sport.name,
+    sportSlug: g.sport.slug,
+    sportCategory: g.sport.category,
+    homeMoneyLine: g.homeMoneyLine,
+    awayMoneyLine: g.awayMoneyLine,
+    spreadValue: g.spreadValue ? Number(g.spreadValue) : null,
+    homeSpreadOdds: g.homeSpreadOdds,
+    awaySpreadOdds: g.awaySpreadOdds,
+    oddsLockedAt: g.oddsLockedAt?.toISOString() || null,
+  }));
 
-  allGames.sort(
-    (a, b) =>
-      new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime()
-  );
-
-  return NextResponse.json({ games: allGames });
+  return NextResponse.json({ games: formatted });
 }

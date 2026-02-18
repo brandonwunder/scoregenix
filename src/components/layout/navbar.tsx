@@ -54,6 +54,9 @@ export function Navbar() {
               <Link href="/admin" className={linkClass("/admin")}>
                 Dashboard
               </Link>
+              <Link href="/admin/games/today" className={linkClass("/admin/games/today")}>
+                Today&apos;s Games
+              </Link>
               <Link href="/admin/validate" className={linkClass("/admin/validate")}>
                 Validate
               </Link>

@@ -27,30 +27,52 @@ interface BetModalProps {
 
 type BetType = "MONEY_LINE" | "POINT_SPREAD" | "PARLAY";
 
+function formatOdds(odds: number | null | undefined): string {
+  if (odds == null) return "\u2014";
+  return odds > 0 ? `+${odds}` : `${odds}`;
+}
+
 export function BetModal({ game, open, onOpenChange }: BetModalProps) {
   const [betType, setBetType] = useState<BetType>("MONEY_LINE");
   const [selectedTeam, setSelectedTeam] = useState<"home" | "away" | null>(
     null
   );
   const [wager, setWager] = useState("");
-  const [spread, setSpread] = useState("");
-  const [odds, setOdds] = useState("-110");
   const [submitting, setSubmitting] = useState(false);
 
   if (!game) return null;
 
+  // Derive odds from game's locked data
+  const getOddsForSelection = (): number | null => {
+    if (!selectedTeam) return null;
+    if (betType === "MONEY_LINE") {
+      return selectedTeam === "home"
+        ? (game.homeMoneyLine ?? null)
+        : (game.awayMoneyLine ?? null);
+    }
+    if (betType === "POINT_SPREAD") {
+      return selectedTeam === "home"
+        ? (game.homeSpreadOdds ?? null)
+        : (game.awaySpreadOdds ?? null);
+    }
+    return null;
+  };
+
+  const lockedOdds = getOddsForSelection();
+  const hasOdds = game.oddsLockedAt != null;
+  const displaySpread =
+    game.spreadValue != null ? String(game.spreadValue) : "";
+
   const resetForm = () => {
     setSelectedTeam(null);
     setWager("");
-    setSpread("");
-    setOdds("-110");
     setBetType("MONEY_LINE");
   };
 
   const calculatePayout = (): number => {
     const wagerNum = parseFloat(wager);
-    const oddsNum = parseFloat(odds);
-    if (isNaN(wagerNum) || isNaN(oddsNum) || wagerNum <= 0) return 0;
+    const oddsNum = lockedOdds;
+    if (isNaN(wagerNum) || oddsNum == null || wagerNum <= 0) return 0;
 
     if (oddsNum > 0) {
       return wagerNum + wagerNum * (oddsNum / 100);
@@ -65,8 +87,8 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
       return;
     }
 
-    if (betType === "POINT_SPREAD" && !spread) {
-      toast.error("Please enter a spread value for point spread bets.");
+    if (!hasOdds || lockedOdds == null) {
+      toast.error("Odds are not available for this game.");
       return;
     }
 
@@ -86,13 +108,13 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
           potentialPayout: payout > 0 ? payout : undefined,
           legs: [
             {
-              gameId: game.externalApiId,
+              gameId: game.id || game.externalApiId,
               teamSelected: teamName,
               lineValue:
-                betType === "POINT_SPREAD"
-                  ? parseFloat(spread)
+                betType === "POINT_SPREAD" && game.spreadValue != null
+                  ? game.spreadValue
                   : undefined,
-              odds: odds ? parseFloat(odds) : undefined,
+              odds: lockedOdds ?? undefined,
             },
           ],
         }),
@@ -150,13 +172,16 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
         <div className="rounded-lg border border-white/10 bg-white/5 p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Image
-                src={game.awayTeamLogo}
-                alt={game.awayTeam}
-                width={24}
-                height={24}
-                className="h-6 w-6 object-contain"
-              />
+              {game.awayTeamLogo && (
+                <Image
+                  src={game.awayTeamLogo}
+                  alt={game.awayTeam}
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 object-contain"
+                  unoptimized
+                />
+              )}
               <span className="text-sm font-medium text-white/90">
                 {game.awayTeamAbbr}
               </span>
@@ -166,13 +191,16 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
               <span className="text-sm font-medium text-white/90">
                 {game.homeTeamAbbr}
               </span>
-              <Image
-                src={game.homeTeamLogo}
-                alt={game.homeTeam}
-                width={24}
-                height={24}
-                className="h-6 w-6 object-contain"
-              />
+              {game.homeTeamLogo && (
+                <Image
+                  src={game.homeTeamLogo}
+                  alt={game.homeTeam}
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 object-contain"
+                  unoptimized
+                />
+              )}
             </div>
           </div>
         </div>
@@ -224,16 +252,24 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   )}
                 >
-                  <Image
-                    src={game.awayTeamLogo}
-                    alt={game.awayTeam}
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 object-contain"
-                  />
+                  {game.awayTeamLogo && (
+                    <Image
+                      src={game.awayTeamLogo}
+                      alt={game.awayTeam}
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 object-contain"
+                      unoptimized
+                    />
+                  )}
                   <span className="text-xs font-medium text-white">
                     {game.awayTeamAbbr}
                   </span>
+                  {game.awayMoneyLine != null && (
+                    <span className="text-[10px] text-white/40">
+                      {formatOdds(game.awayMoneyLine)}
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -245,36 +281,36 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   )}
                 >
-                  <Image
-                    src={game.homeTeamLogo}
-                    alt={game.homeTeam}
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 object-contain"
-                  />
+                  {game.homeTeamLogo && (
+                    <Image
+                      src={game.homeTeamLogo}
+                      alt={game.homeTeam}
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 object-contain"
+                      unoptimized
+                    />
+                  )}
                   <span className="text-xs font-medium text-white">
                     {game.homeTeamAbbr}
                   </span>
+                  {game.homeMoneyLine != null && (
+                    <span className="text-[10px] text-white/40">
+                      {formatOdds(game.homeMoneyLine)}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label
-                  htmlFor="ml-odds"
-                  className="mb-1.5 block text-xs text-white/50"
-                >
+                <Label className="mb-1.5 block text-xs text-white/50">
                   Odds
                 </Label>
-                <Input
-                  id="ml-odds"
-                  type="text"
-                  value={odds}
-                  onChange={(e) => setOdds(e.target.value)}
-                  placeholder="-110"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/30"
-                />
+                <div className="flex h-9 items-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-medium text-white/70">
+                  {formatOdds(lockedOdds)}
+                </div>
               </div>
               <div>
                 <Label
@@ -314,16 +350,24 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   )}
                 >
-                  <Image
-                    src={game.awayTeamLogo}
-                    alt={game.awayTeam}
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 object-contain"
-                  />
+                  {game.awayTeamLogo && (
+                    <Image
+                      src={game.awayTeamLogo}
+                      alt={game.awayTeam}
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 object-contain"
+                      unoptimized
+                    />
+                  )}
                   <span className="text-xs font-medium text-white">
                     {game.awayTeamAbbr}
                   </span>
+                  {game.awaySpreadOdds != null && (
+                    <span className="text-[10px] text-white/40">
+                      {formatOdds(game.awaySpreadOdds)}
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -335,52 +379,44 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   )}
                 >
-                  <Image
-                    src={game.homeTeamLogo}
-                    alt={game.homeTeam}
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 object-contain"
-                  />
+                  {game.homeTeamLogo && (
+                    <Image
+                      src={game.homeTeamLogo}
+                      alt={game.homeTeam}
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 object-contain"
+                      unoptimized
+                    />
+                  )}
                   <span className="text-xs font-medium text-white">
                     {game.homeTeamAbbr}
                   </span>
+                  {game.homeSpreadOdds != null && (
+                    <span className="text-[10px] text-white/40">
+                      {formatOdds(game.homeSpreadOdds)}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label
-                  htmlFor="ps-spread"
-                  className="mb-1.5 block text-xs text-white/50"
-                >
+                <Label className="mb-1.5 block text-xs text-white/50">
                   Spread
                 </Label>
-                <Input
-                  id="ps-spread"
-                  type="text"
-                  value={spread}
-                  onChange={(e) => setSpread(e.target.value)}
-                  placeholder="-3.5"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/30"
-                />
+                <div className="flex h-9 items-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-medium text-white/70">
+                  {displaySpread || "\u2014"}
+                </div>
               </div>
               <div>
-                <Label
-                  htmlFor="ps-odds"
-                  className="mb-1.5 block text-xs text-white/50"
-                >
+                <Label className="mb-1.5 block text-xs text-white/50">
                   Odds
                 </Label>
-                <Input
-                  id="ps-odds"
-                  type="text"
-                  value={odds}
-                  onChange={(e) => setOdds(e.target.value)}
-                  placeholder="-110"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/30"
-                />
+                <div className="flex h-9 items-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-medium text-white/70">
+                  {formatOdds(lockedOdds)}
+                </div>
               </div>
               <div>
                 <Label
@@ -418,6 +454,15 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
           </TabsContent>
         </Tabs>
 
+        {/* Odds unavailable warning */}
+        {!hasOdds && betType !== "PARLAY" && (
+          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-center">
+            <p className="text-xs text-yellow-400">
+              Odds not yet available for this game. Bet placement is disabled.
+            </p>
+          </div>
+        )}
+
         {/* Payout Preview */}
         {betType !== "PARLAY" && payout > 0 && (
           <AnimatePresence>
@@ -448,7 +493,12 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
           <Button
             onClick={handlePlaceBet}
             disabled={
-              submitting || !selectedTeam || !wager || parseFloat(wager) <= 0
+              submitting ||
+              !selectedTeam ||
+              !wager ||
+              parseFloat(wager) <= 0 ||
+              !hasOdds ||
+              lockedOdds == null
             }
             className="w-full bg-emerald-500 font-semibold text-black hover:bg-emerald-400 disabled:opacity-40"
           >
