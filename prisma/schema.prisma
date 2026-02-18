@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
+
+enum GameStatus {
+  SCHEDULED
+  IN_PROGRESS
+  FINAL
+  POSTPONED
+  CANCELLED
+}
+
+enum BetType {
+  MONEY_LINE
+  POINT_SPREAD
+  PARLAY
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  PUSH
+}
+
+enum ValidationStatus {
+  CORRECT
+  FLAGGED
+  UNCERTAIN
+  CORRECTED
+}
+
+enum UploadStatus {
+  PROCESSING
+  VALIDATED
+  ERROR
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String?
+  role          UserRole  @default(CUSTOMER)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  subscription  Subscription?
+  bets          Bet[]
+  excelUploads  ExcelUpload[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  userId                String             @unique @map("user_id")
+  planType              SubscriptionPlan   @map("plan_type")
+  status                SubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId  String?            @unique @map("stripe_subscription_id")
+  stripeCustomerId      String?            @unique @map("stripe_customer_id")
+  startDate             DateTime           @map("start_date")
+  endDate               DateTime           @map("end_date")
+  amount                Decimal            @db.Decimal(10, 2)
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Sport {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  slug     String  @unique
+  category String
+  active   Boolean @default(true)
+  apiKey   String? @map("api_key")
+
+  games Game[]
+
+  @@map("sports")
+}
+
+model Game {
+  id            String     @id @default(cuid())
+  sportId       String     @map("sport_id")
+  homeTeam      String     @map("home_team")
+  awayTeam      String     @map("away_team")
+  gameDate      DateTime   @map("game_date")
+  status        GameStatus @default(SCHEDULED)
+  homeScore     Int?       @map("home_score")
+  awayScore     Int?       @map("away_score")
+  externalApiId String?    @map("external_api_id")
+  lastSyncedAt  DateTime?  @map("last_synced_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  sport      Sport       @relation(fields: [sportId], references: [id])
+  betLegs    BetLeg[]
+  uploadRows UploadRow[]
+
+  @@unique([externalApiId, sportId])
+  @@map("games")
+}
+
+model Bet {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  betType         BetType   @map("bet_type")
+  wagerAmount     Decimal   @map("wager_amount") @db.Decimal(10, 2)
+  potentialPayout Decimal?  @map("potential_payout") @db.Decimal(10, 2)
+  status          BetStatus @default(PENDING)
+  placedAt        DateTime  @default(now()) @map("placed_at")
+  settledAt       DateTime? @map("settled_at")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legs BetLeg[]
+
+  @@map("bets")
+}
+
+model BetLeg {
+  id           String    @id @default(cuid())
+  betId        String    @map("bet_id")
+  gameId       String    @map("game_id")
+  teamSelected String    @map("team_selected")
+  lineValue    Decimal?  @map("line_value") @db.Decimal(5, 1)
+  odds         Decimal?  @db.Decimal(8, 2)
+  outcome      BetStatus @default(PENDING)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  bet  Bet  @relation(fields: [betId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id])
+
+  @@map("bet_legs")
+}
+
+model ExcelUpload {
+  id             String       @id @default(cuid())
+  adminUserId    String       @map("admin_user_id")
+  fileName       String       @map("file_name")
+  uploadedAt     DateTime     @default(now()) @map("uploaded_at")
+  status         UploadStatus @default(PROCESSING)
+  totalRows      Int          @default(0) @map("total_rows")
+  correctCount   Int          @default(0) @map("correct_count")
+  flaggedCount   Int          @default(0) @map("flagged_count")
+  uncertainCount Int          @default(0) @map("uncertain_count")
+
+  adminUser User        @relation(fields: [adminUserId], references: [id])
+  rows      UploadRow[]
+
+  @@map("excel_uploads")
+}
+
+model UploadRow {
+  id               String           @id @default(cuid())
+  uploadId         String           @map("upload_id")
+  rowNumber        Int              @map("row_number")
+  rawData          Json             @map("raw_data")
+  matchedGameId    String?          @map("matched_game_id")
+  validationStatus ValidationStatus @default(UNCERTAIN) @map("validation_status")
+  originalValue    Json?            @map("original_value")
+  actualValue      Json?            @map("actual_value")
+  correctedBy      String?          @map("corrected_by")
+  correctedAt      DateTime?        @map("corrected_at")
+
+  upload      ExcelUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  matchedGame Game?       @relation(fields: [matchedGameId], references: [id])
+
+  @@map("upload_rows")
+}
+
+model TeamAlias {
+  id                String @id @default(cuid())
+  teamCanonicalName String @map("team_canonical_name")
+  alias             String @unique
+
+  @@map("team_aliases")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  timestamp  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_log")
+}
