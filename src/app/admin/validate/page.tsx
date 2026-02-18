@@ -56,6 +56,7 @@ import { EnhancedUploadZone } from "./components/EnhancedUploadZone";
 import { ValidationPipelineVisualizer } from "./components/ValidationPipelineVisualizer";
 import { FloatingActionHub } from "./components/FloatingActionHub";
 import { ImportCelebration } from "./components/ImportCelebration";
+import { ColumnMappingFeedback } from "./components/ColumnMappingFeedback";
 
 // Import hooks
 import { useValidationStats } from "./hooks/useValidationStats";
@@ -168,6 +169,18 @@ interface PreImportSummary {
     totalWager: number;
     outcomes: { won: number; lost: number; push: number };
   };
+}
+
+interface ColumnMappingInfo {
+  detected: Array<{
+    originalHeader: string;
+    mappedField: string;
+    confidence: number;
+    method: "header_match" | "value_heuristic" | "manual";
+  }>;
+  ambiguous: Array<{ header: string; candidates: string[] }>;
+  unmapped: string[];
+  missing: string[];
 }
 
 /* ───── Constants ───── */
@@ -829,6 +842,7 @@ export default function ValidatePage() {
     imported: number;
     totalWager: number;
   } | null>(null);
+  const [columnMapping, setColumnMapping] = useState<ColumnMappingInfo | null>(null);
 
   // Fetch upload history
   const fetchUploads = useCallback(async () => {
@@ -943,6 +957,8 @@ export default function ValidatePage() {
       toast.success("Upload complete", {
         description: `${uploadData.totalRows} rows uploaded and validated`,
       });
+
+      setColumnMapping(uploadData.columnMapping || null);
 
       await fetchUploads();
       setSelectedUploadId(uploadId);
@@ -1270,6 +1286,18 @@ export default function ValidatePage() {
               uploading={uploading}
               uploadProgress={uploadProgress}
             />
+
+            {/* Column Mapping Feedback */}
+            {columnMapping && (
+              <div className="mt-4">
+                <ColumnMappingFeedback
+                  detected={columnMapping.detected}
+                  ambiguous={columnMapping.ambiguous}
+                  unmapped={columnMapping.unmapped}
+                  missing={columnMapping.missing}
+                />
+              </div>
+            )}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
