@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchAndStoreOddsForGames } from "@/lib/odds-api";
 
@@ -22,8 +23,8 @@ function setCooldown(sportId: string): void {
 export async function POST(req: Request) {
   try {
     // Verify authenticated user
-    const { userId } = await auth();
-    if (!userId) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
