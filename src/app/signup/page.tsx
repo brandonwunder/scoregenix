@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,6 +56,14 @@ const plans: {
 ];
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+function SignupContent() {
   const searchParams = useSearchParams();
   const preselectedPlan = searchParams.get("plan") as PlanKey | null;
   const cancelled = searchParams.get("cancelled");
