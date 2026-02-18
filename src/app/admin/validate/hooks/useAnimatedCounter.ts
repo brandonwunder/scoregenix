@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface UseAnimatedCounterOptions {
   target: number;
@@ -11,9 +11,15 @@ export function useAnimatedCounter({
   duration = 1000,
   enabled = true,
 }: UseAnimatedCounterOptions): number {
-  const [count, setCount] = useState(enabled ? 0 : target);
+  const [count, setCount] = useState(target);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Cancel any ongoing animation
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+
     if (!enabled) {
       setCount(target);
       return;
@@ -34,13 +40,23 @@ export function useAnimatedCounter({
       setCount(current);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafRef.current = requestAnimationFrame(animate);
       } else {
         setCount(target);
+        rafRef.current = null;
       }
     };
 
-    requestAnimationFrame(animate);
+    rafRef.current = requestAnimationFrame(animate);
+
+    // Cleanup on unmount or dependency change
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, duration, enabled]);
 
   return count;
