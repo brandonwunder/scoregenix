@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { LayersIcon, AlertCircle } from "lucide-react";
+import { LayersIcon, AlertCircle, RefreshCwIcon, LoaderIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -171,18 +171,32 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
 
       if (data.success) {
         if (data.game?.oddsLockedAt) {
-          toast.success("Odds updated successfully!");
+          toast.success("Odds updated successfully!", {
+            description: data.message || "Odds are now available for betting",
+          });
           // Trigger parent refresh to update game data
           onOpenChange(false);
           window.location.reload();
         } else {
-          toast.info("Odds still not available from providers");
+          toast.warning("Odds still not available", {
+            description:
+              data.message ||
+              "The odds provider hasn't posted odds for this game yet. Try again closer to game time.",
+          });
         }
       } else {
-        toast.error(data.error || "Failed to refresh odds");
+        toast.error("Failed to refresh odds", {
+          description:
+            data.error ||
+            data.details ||
+            "Please check your API key configuration",
+        });
       }
     } catch (error) {
-      toast.error("Error refreshing odds");
+      toast.error("Network error while refreshing odds", {
+        description: "Please check your connection and try again",
+      });
+      console.error("Refresh odds error:", error);
     } finally {
       setIsRefreshingOdds(false);
     }
@@ -605,21 +619,37 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
 
         {/* Odds unavailable warning */}
         {!hasOdds && betType !== "PARLAY" && (
-          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
-            <div className="flex items-center gap-2 text-sm text-yellow-200/90">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span className="text-xs">
-                Odds not yet available for this game. Bet placement is disabled.
-              </span>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+              <div className="flex items-start gap-2 text-sm text-yellow-200/90">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium mb-1">Odds Not Available Yet</p>
+                  <p className="text-xs text-yellow-200/70">
+                    Vegas typically posts odds 1-3 days before game time. Click below
+                    to check if odds are available now.
+                  </p>
+                </div>
+              </div>
             </div>
             <Button
               variant="outline"
               size="sm"
-              className="mt-2 w-full"
+              className="w-full"
               onClick={handleRefreshOdds}
               disabled={isRefreshingOdds}
             >
-              {isRefreshingOdds ? "Fetching Odds..." : "Refresh Odds"}
+              {isRefreshingOdds ? (
+                <>
+                  <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
+                  Checking for odds...
+                </>
+              ) : (
+                <>
+                  <RefreshCwIcon className="mr-2 h-4 w-4" />
+                  Check for Odds Now
+                </>
+              )}
             </Button>
           </div>
         )}

@@ -77,10 +77,24 @@ export async function POST(req: Request) {
     }
 
     // Fetch and store odds for all games in this sport
-    const updated = await fetchAndStoreOddsForGames(
-      game.sport.slug,
-      game.sportId
-    );
+    let updated: number;
+    try {
+      updated = await fetchAndStoreOddsForGames(
+        game.sport.slug,
+        game.sportId
+      );
+    } catch (error) {
+      console.error("Error in fetchAndStoreOddsForGames:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Failed to fetch odds from provider. Please try again in a few minutes.",
+          details: error instanceof Error ? error.message : "Unknown error",
+        },
+        { status: 500 }
+      );
+    }
 
     // Set cooldown for this sport
     setCooldown(game.sportId);
@@ -94,6 +108,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
+    const hasOddsNow = updatedGame.oddsLockedAt != null;
+
     return NextResponse.json({
       success: true,
       game: {
@@ -106,9 +122,11 @@ export async function POST(req: Request) {
         awaySpreadOdds: updatedGame.awaySpreadOdds,
       },
       updated,
-      message: updatedGame.oddsLockedAt
-        ? "Odds updated successfully"
-        : "Odds still not available from providers",
+      message: hasOddsNow
+        ? `Odds locked successfully! Updated ${updated} games in this sport.`
+        : updated > 0
+          ? `Updated ${updated} other games, but odds still unavailable for this specific game. The provider may not have posted odds yet.`
+          : "No odds available from provider yet. Vegas typically posts odds 1-3 days before game time.",
     });
   } catch (error) {
     console.error("Error refreshing odds:", error);
