@@ -19,11 +19,63 @@ import {
   ImportIcon,
   CheckCircle2Icon,
   ChevronRightIcon,
+  ChevronDownIcon,
 } from "lucide-react";
 
 interface ValidationBreakdownModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface ExpandableSectionProps {
+  id: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  title: string;
+  description: string;
+  details: React.ReactNode;
+  expanded: boolean;
+  onToggle: () => void;
+}
+
+function ExpandableSection({
+  id,
+  icon: Icon,
+  iconColor,
+  title,
+  description,
+  details,
+  expanded,
+  onToggle,
+}: ExpandableSectionProps) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-start justify-between p-4 hover:bg-white/5 transition-colors text-left"
+      >
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", iconColor)} />
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-medium text-white">{title}</h3>
+            <p className="text-sm text-white/60 mt-1">{description}</p>
+          </div>
+        </div>
+        <ChevronDownIcon
+          className={cn(
+            "h-4 w-4 text-white/40 transition-transform shrink-0 mt-1",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 pt-2 space-y-3 border-t border-white/5">
+          {details}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FlowDiagram() {
