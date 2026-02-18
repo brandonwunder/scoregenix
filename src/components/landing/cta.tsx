@@ -31,28 +31,24 @@ export function CTA() {
               className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight"
               style={{ fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              Ready to Take Your
-              <br />
-              Betting to the{" "}
-              <span className="text-emerald-400">Next Level</span>?
+              Your Edge Is <span className="text-emerald-400">Waiting</span>
             </h2>
             <p className="mt-6 mx-auto max-w-xl text-lg text-white/50">
-              Join thousands of bettors who are already using data to make
-              smarter decisions. Start your journey today.
+              Join a select group of investors who trust data over intuition. The algorithm is running. The picks are ready. All that's missing is you.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/signup"
                 className="inline-flex h-12 items-center justify-center rounded-lg bg-emerald-500 px-8 text-base font-semibold text-black transition-colors hover:bg-emerald-400"
               >
-                Start Winning Today
+                Start with Standard
               </Link>
-              <Link
-                href="#pricing"
+              <a
+                href="mailto:elite@scoregenix.com?subject=Elite%20Tier%20Application"
                 className="inline-flex h-12 items-center justify-center rounded-lg border border-white/20 px-8 text-base font-medium text-white transition-colors hover:bg-white/10"
               >
-                View Pricing
-              </Link>
+                Apply for Elite
+              </a>
             </div>
           </div>
         </motion.div>
