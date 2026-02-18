@@ -119,5 +119,16 @@ export async function POST(req: NextRequest) {
       unmappedColumns: columnDetection.unmappedColumns,
       overallConfidence: columnDetection.overallConfidence,
     },
+    columnMapping: {
+      detected: Object.entries(columnDetection.mapping).map(([header, info]) => ({
+        originalHeader: header,
+        mappedField: info.field,
+        confidence: info.confidence,
+        method: info.method,
+      })),
+      ambiguous: columnDetection.ambiguousColumns,
+      unmapped: columnDetection.unmappedColumns,
+      missing: columnDetection.missingRequired,
+    },
   });
 }
