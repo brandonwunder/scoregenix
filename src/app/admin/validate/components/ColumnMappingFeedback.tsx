@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ColumnMapping {
@@ -43,6 +42,9 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const REQUIRED_FIELDS = ["date", "outcome"];
+
+const CONFIDENCE_HIGH = 0.9;
+const CONFIDENCE_MEDIUM = 0.7;
 
 export function ColumnMappingFeedback({
   detected,
@@ -158,9 +160,9 @@ export function ColumnMappingFeedback({
                 {detected.map((mapping) => {
                   const isRequired = REQUIRED_FIELDS.includes(mapping.mappedField);
                   const confidenceColor =
-                    mapping.confidence >= 0.9
+                    mapping.confidence >= CONFIDENCE_HIGH
                       ? "text-emerald-400"
-                      : mapping.confidence >= 0.7
+                      : mapping.confidence >= CONFIDENCE_MEDIUM
                       ? "text-yellow-400"
                       : "text-orange-400";
 
