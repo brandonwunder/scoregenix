@@ -105,40 +105,122 @@ export async function fetchOdds(
   });
 }
 
+/**
+ * Normalize team names for better matching between APIs
+ * Examples:
+ * - "Los Angeles Lakers" -> "lakers"
+ * - "LA Lakers" -> "lakers"
+ * - "L.A. Lakers" -> "lakers"
+ */
+function normalizeTeamName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/^(los angeles|la|l\.a\.)\s+/i, "") // Remove LA prefix
+    .replace(/^(new york|ny|n\.y\.)\s+/i, "") // Remove NY prefix
+    .replace(/^(san francisco|sf|s\.f\.)\s+/i, "") // Remove SF prefix
+    .replace(/^(golden state)\s+/i, "") // Remove Golden State
+    .replace(/\s+/g, "") // Remove all spaces
+    .replace(/[^a-z0-9]/g, ""); // Remove special chars
+}
+
+/**
+ * Find best matching game for odds data
+ * Uses normalized exact match first, falls back to fuzzy match
+ */
+async function findMatchingGame(
+  odds: NormalizedOdds,
+  sportId: string
+): Promise<any | null> {
+  const normalizedHome = normalizeTeamName(odds.homeTeam);
+  const normalizedAway = normalizeTeamName(odds.awayTeam);
+
+  // Try exact match first (most common case)
+  let game = await prisma.game.findFirst({
+    where: {
+      sportId,
+      oddsLockedAt: null,
+      homeTeam: odds.homeTeam,
+    },
+  });
+
+  if (game) return game;
+
+  // Try normalized match
+  const candidates = await prisma.game.findMany({
+    where: {
+      sportId,
+      oddsLockedAt: null,
+    },
+  });
+
+  // Find best match by comparing normalized names
+  game = candidates.find((g) => {
+    const gameHome = normalizeTeamName(g.homeTeam);
+    const gameAway = normalizeTeamName(g.awayTeam);
+    return (
+      (gameHome === normalizedHome && gameAway === normalizedAway) ||
+      (gameHome.includes(normalizedHome) && gameAway.includes(normalizedAway))
+    );
+  }) ?? null;
+
+  return game;
+}
+
 export async function fetchAndStoreOddsForGames(
   sportSlug: string,
   sportId: string
 ): Promise<number> {
   const oddsData = await fetchOdds(sportSlug);
-  if (oddsData.length === 0) return 0;
+  if (oddsData.length === 0) {
+    console.warn(`No odds data fetched for ${sportSlug}`);
+    return 0;
+  }
 
   let updated = 0;
+  const errors: string[] = [];
 
   for (const odds of oddsData) {
-    // Match by home team name against games that don't have odds locked yet
-    const game = await prisma.game.findFirst({
-      where: {
-        sportId,
-        oddsLockedAt: null,
-        homeTeam: odds.homeTeam,
-      },
-    });
+    try {
+      const game = await findMatchingGame(odds, sportId);
 
-    if (game) {
-      await prisma.game.update({
-        where: { id: game.id },
-        data: {
-          homeMoneyLine: odds.moneyLineHome,
-          awayMoneyLine: odds.moneyLineAway,
-          spreadValue: odds.spreadPointHome,
-          homeSpreadOdds: odds.spreadHome,
-          awaySpreadOdds: odds.spreadAway,
-          oddsLockedAt: new Date(),
-        },
-      });
-      updated++;
+      if (game) {
+        await prisma.game.update({
+          where: { id: game.id },
+          data: {
+            homeMoneyLine: odds.moneyLineHome,
+            awayMoneyLine: odds.moneyLineAway,
+            spreadValue: odds.spreadPointHome,
+            homeSpreadOdds: odds.spreadHome,
+            awaySpreadOdds: odds.spreadAway,
+            oddsLockedAt: new Date(),
+          },
+        });
+        updated++;
+        console.log(
+          `✓ Updated odds for ${game.homeTeam} vs ${game.awayTeam}`
+        );
+      } else {
+        errors.push(
+          `No match found for ${odds.homeTeam} vs ${odds.awayTeam}`
+        );
+      }
+    } catch (error) {
+      errors.push(
+        `Error updating odds for ${odds.homeTeam} vs ${odds.awayTeam}: ${error}`
+      );
     }
   }
+
+  if (errors.length > 0) {
+    console.error(
+      `Odds fetch errors for ${sportSlug}:`,
+      errors.join("\n")
+    );
+  }
+
+  console.log(
+    `Odds update complete for ${sportSlug}: ${updated}/${oddsData.length} games updated`
+  );
 
   return updated;
 }
