@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Odds API Configuration
+
+Scoregenix uses [The Odds API](https://the-odds-api.com/) to fetch real-time betting odds.
+
+1. Get your free API key: https://the-odds-api.com/
+2. Add to `.env`:
+   ```bash
+   ODDS_API_KEY="your_key_here"
+   ```
+
+See [docs/ODDS_API_SETUP.md](./docs/ODDS_API_SETUP.md) for detailed setup and troubleshooting.
+
 ## Getting Started
 
 First, run the development server:
