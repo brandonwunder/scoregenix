@@ -16,12 +16,14 @@ const bulkCorrectSchema = z.object({
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { uploadId: string } }
+  { params }: { params: Promise<{ uploadId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { uploadId } = await params;
 
   try {
     const body = await req.json();
@@ -34,7 +36,7 @@ export async function POST(
         where: { id: correction.rowId },
       });
 
-      if (!row || row.uploadId !== params.uploadId) continue;
+      if (!row || row.uploadId !== uploadId) continue;
 
       const oldValue = {
         validationStatus: row.validationStatus,
@@ -75,11 +77,11 @@ export async function POST(
     }
 
     const rows = await prisma.uploadRow.findMany({
-      where: { uploadId: params.uploadId },
+      where: { uploadId: uploadId },
     });
 
     await prisma.excelUpload.update({
-      where: { id: params.uploadId },
+      where: { id: uploadId },
       data: {
         correctCount: rows.filter(
           (r) =>

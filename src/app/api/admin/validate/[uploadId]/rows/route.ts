@@ -5,19 +5,21 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { uploadId: string } }
+  { params }: { params: Promise<{ uploadId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { uploadId } = await params;
+
   const searchParams = req.nextUrl.searchParams;
   const status = searchParams.get("status");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
 
-  const where: any = { uploadId: params.uploadId };
+  const where: any = { uploadId };
   if (status) where.validationStatus = status;
 
   const [rows, total] = await Promise.all([

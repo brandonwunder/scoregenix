@@ -5,15 +5,17 @@ import { validateUpload } from "@/lib/validation-engine";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { uploadId: string } }
+  { params }: { params: Promise<{ uploadId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { uploadId } = await params;
+
   try {
-    const result = await validateUpload(params.uploadId);
+    const result = await validateUpload(uploadId);
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(
