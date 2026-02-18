@@ -50,6 +50,17 @@ import {
 import { cn } from "@/lib/utils";
 import { ValidationBreakdownModal } from "@/components/admin/ValidationBreakdownModal";
 
+// Import new components
+import { HeroStatsBar } from "./components/HeroStatsBar";
+import { EnhancedUploadZone } from "./components/EnhancedUploadZone";
+import { ValidationPipelineVisualizer } from "./components/ValidationPipelineVisualizer";
+import { FloatingActionHub } from "./components/FloatingActionHub";
+import { ImportCelebration } from "./components/ImportCelebration";
+
+// Import hooks
+import { useValidationStats } from "./hooks/useValidationStats";
+import { usePipelineState } from "./hooks/usePipelineState";
+
 /* ───── Types ───── */
 
 interface Upload {
@@ -813,6 +824,11 @@ export default function ValidatePage() {
   const [importing, setImporting] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
   const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    imported: number;
+    totalWager: number;
+  } | null>(null);
 
   // Fetch upload history
   const fetchUploads = useCallback(async () => {
@@ -1104,12 +1120,16 @@ export default function ValidatePage() {
       }
 
       const result = await res.json();
-      toast.success(`Imported ${result.imported} bets`, {
-        description:
-          result.skipped > 0 ? `${result.skipped} rows skipped` : undefined,
+
+      // Set import result for celebration
+      setImportResult({
+        imported: result.imported,
+        totalWager: importSummary?.summary.totalWager || 0,
       });
 
       setImportDialogOpen(false);
+      setCelebrationOpen(true);
+
       fetchUploads();
       fetchAllRows(selectedUploadId);
     } catch (err: any) {
@@ -1178,6 +1198,23 @@ export default function ValidatePage() {
     );
   const isImported = selectedUpload?.status === "IMPORTED";
 
+  // Calculate stats for HeroStatsBar
+  const stats = useValidationStats(allRows);
+  const pipelineStates = usePipelineState(allRows);
+
+  // Calculate rows processed today
+  const rowsProcessedToday = uploads
+    .filter((u) => {
+      const uploadDate = new Date(u.uploadedAt);
+      const today = new Date();
+      return (
+        uploadDate.getDate() === today.getDate() &&
+        uploadDate.getMonth() === today.getMonth() &&
+        uploadDate.getFullYear() === today.getFullYear()
+      );
+    })
+    .reduce((sum, u) => sum + u.totalRows, 0);
+
   return (
     <PageShell>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -1210,10 +1247,25 @@ export default function ValidatePage() {
           </Button>
         </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        {/* Hero Stats Bar */}
+        <HeroStatsBar
+          totalUploads={uploads.length}
+          successRate={stats.successRate}
+          rowsProcessedToday={rowsProcessedToday}
+          pendingActions={stats.flagged + stats.uncertain}
+        />
+
+        <div
+          className={cn(
+            "grid gap-6",
+            selectedUploadId && allRows.length > 0
+              ? "lg:grid-cols-[320px_1fr_280px]"
+              : "lg:grid-cols-[320px_1fr]"
+          )}
+        >
           {/* Left Sidebar */}
           <div className="space-y-6">
-            <UploadZone
+            <EnhancedUploadZone
               onUpload={handleUpload}
               uploading={uploading}
               uploadProgress={uploadProgress}
@@ -1610,8 +1662,38 @@ export default function ValidatePage() {
               </>
             )}
           </div>
+
+          {/* Right Sidebar - Pipeline Visualizer */}
+          {selectedUploadId && allRows.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3
+                  className="mb-4 text-sm font-semibold text-white"
+                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+                >
+                  Validation Pipeline
+                </h3>
+                <ValidationPipelineVisualizer passes={pipelineStates} />
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
+
+      {/* Floating Action Hub */}
+      <FloatingActionHub
+        onImport={openImportDialog}
+        onRevalidate={handleRevalidate}
+        onFixAllFlagged={() => setFixAllDialogOpen(true)}
+        canImport={!!canImport}
+        canRevalidate={uncertainCount > 0}
+        canFixFlagged={flaggedCount > 0}
+      />
 
       {/* Fix All Flagged Confirmation Dialog */}
       <Dialog open={fixAllDialogOpen} onOpenChange={setFixAllDialogOpen}>
@@ -1765,6 +1847,15 @@ export default function ValidatePage() {
       <ValidationBreakdownModal
         open={breakdownModalOpen}
         onOpenChange={setBreakdownModalOpen}
+      />
+
+      {/* Import Celebration */}
+      <ImportCelebration
+        open={celebrationOpen}
+        onOpenChange={setCelebrationOpen}
+        betsImported={importResult?.imported || 0}
+        totalWagered={importResult?.totalWager || 0}
+        onViewDashboard={() => router.push("/admin/dashboard")}
       />
     </PageShell>
   );

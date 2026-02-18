@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 
 interface UploadRow {
   validationStatus: 'CORRECT' | 'FLAGGED' | 'UNCERTAIN' | 'CORRECTED';
-  fieldConfidence?: Array<{ field: string; confidence: number }>;
-  uncertainReasons?: string[];
+  fieldConfidence?: Array<{ field: string; confidence: number; source?: string; details?: string }> | null;
+  uncertainReasons?: string[] | null;
 }
 
 interface ValidationStats {

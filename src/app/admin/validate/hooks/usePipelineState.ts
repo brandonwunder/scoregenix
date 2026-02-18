@@ -4,7 +4,7 @@ interface UploadRow {
   validationReceipt?: Array<{
     pass: string;
     result: string;
-  }>;
+  }> | null;
 }
 
 interface PassState {
