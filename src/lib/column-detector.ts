@@ -224,6 +224,18 @@ function detectByValues(
     candidates.push({ field: "sport", confidence: 0.8 });
   }
 
+  // Wager amount detection: currency values in a reasonable bet range
+  const wagerPatternCount = samples.filter((v) => {
+    const str = String(v).trim();
+    const cleaned = str.replace(/[$€£,\s]/g, "");
+    const num = Number(cleaned);
+    // Typical wager amounts: $1 - $10,000
+    return !isNaN(num) && num >= 1 && num <= 10000;
+  }).length;
+  if (wagerPatternCount > samples.length * 0.6 && !header.toLowerCase().includes("payout")) {
+    candidates.push({ field: "wagerAmount", confidence: 0.7 });
+  }
+
   return candidates;
 }
 
