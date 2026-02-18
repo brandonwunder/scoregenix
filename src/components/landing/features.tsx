@@ -112,7 +112,7 @@ const features = [
   {
     title: "Subscription Plans",
     description:
-      "Flexible pricing designed for every bettor. From casual to professional — there is a plan for you.",
+      "One simple annual plan with full platform access. No hidden fees, no upsells.",
     icon: (
       <svg
         className="h-6 w-6"

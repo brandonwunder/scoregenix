@@ -43,20 +43,7 @@ export async function POST(req: NextRequest) {
 
       const startDate = new Date();
       const endDate = new Date();
-      switch (plan) {
-        case "MONTHLY":
-          endDate.setMonth(endDate.getMonth() + 1);
-          break;
-        case "QUARTERLY":
-          endDate.setMonth(endDate.getMonth() + 3);
-          break;
-        case "SEMIANNUAL":
-          endDate.setMonth(endDate.getMonth() + 6);
-          break;
-        case "ANNUAL":
-          endDate.setFullYear(endDate.getFullYear() + 1);
-          break;
-      }
+      endDate.setFullYear(endDate.getFullYear() + 1);
 
       await prisma.subscription.upsert({
         where: { userId: user.id },

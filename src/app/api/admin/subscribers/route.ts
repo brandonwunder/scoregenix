@@ -23,19 +23,7 @@ export async function GET() {
     .filter((s) => s.subscription?.status === "ACTIVE")
     .reduce((sum, s) => {
       const amount = Number(s.subscription?.amount || 0);
-      const plan = s.subscription?.planType;
-      switch (plan) {
-        case "MONTHLY":
-          return sum + amount;
-        case "QUARTERLY":
-          return sum + amount / 3;
-        case "SEMIANNUAL":
-          return sum + amount / 6;
-        case "ANNUAL":
-          return sum + amount / 12;
-        default:
-          return sum;
-      }
+      return sum + amount / 12;
     }, 0);
 
   return NextResponse.json({

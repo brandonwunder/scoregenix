@@ -13,6 +13,7 @@ export interface ParsedRow {
   outcome: string | null;
   wagerAmount: number | null;
   payout: number | null;
+  profit: number | null;
   raw: Record<string, any>;
 }
 
@@ -43,13 +44,18 @@ const COLUMN_MAP: Record<string, string> = {
   result: "outcome",
   win_loss: "outcome",
   winloss: "outcome",
+  w_l: "outcome",
   wager: "wagerAmount",
   wager_amount: "wagerAmount",
   amount: "wagerAmount",
   stake: "wagerAmount",
+  risk: "wagerAmount",
   payout: "payout",
-  profit: "payout",
   return: "payout",
+  to_win: "payout",
+  profit: "profit",
+  net: "profit",
+  net_profit: "profit",
 };
 
 function normalizeHeader(header: string): string {
@@ -57,8 +63,90 @@ function normalizeHeader(header: string): string {
   return COLUMN_MAP[key] || key;
 }
 
+/**
+ * Parse dates from various formats:
+ * - Excel serial numbers (e.g. 45312)
+ * - ISO strings (2024-01-15)
+ * - US format (01/15/2024, 1/15/24)
+ * - Dashed format (01-15-2024)
+ */
+function parseDate(value: any): string | null {
+  if (value == null || value === "") return null;
+
+  // Handle Excel serial dates (numbers like 45312)
+  if (typeof value === "number" && value > 30000 && value < 60000) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const date = new Date(excelEpoch.getTime() + value * msPerDay);
+    return date.toISOString().split("T")[0];
+  }
+
+  const str = String(value).trim();
+
+  // Try MM/DD/YYYY or MM-DD-YYYY patterns first
+  const mdyMatch = str.match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/
+  );
+  if (mdyMatch) {
+    const [, m, d, y] = mdyMatch;
+    const year = y.length === 2 ? `20${y}` : y;
+    const dateObj = new Date(
+      `${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00Z`
+    );
+    if (!isNaN(dateObj.getTime())) return dateObj.toISOString().split("T")[0];
+  }
+
+  // Try YYYY-MM-DD (ISO)
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const dateObj = new Date(`${isoMatch[0]}T00:00:00Z`);
+    if (!isNaN(dateObj.getTime())) return dateObj.toISOString().split("T")[0];
+  }
+
+  // Last resort: try native Date parse
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split("T")[0];
+  }
+
+  return str; // Return raw — validation will flag it
+}
+
+/**
+ * Clean a value into a number, handling:
+ * - Currency symbols ($, €)
+ * - Commas as thousands separators
+ * - "PK" / "pick'em" → 0
+ * - Parenthetical negatives (100) → -100
+ * - Returns null instead of NaN
+ */
+function cleanNumber(value: any): number | null {
+  if (value == null || value === "") return null;
+
+  // Already a number
+  if (typeof value === "number") return isNaN(value) ? null : value;
+
+  const str = String(value).trim();
+
+  // Handle "PK" / "pk" / "Pick" / "pick'em" → spread of 0
+  if (/^(pk|pick|pick'?em|even)$/i.test(str)) return 0;
+
+  // Strip currency symbols, commas, whitespace
+  let cleaned = str.replace(/[$€£,\s]/g, "");
+
+  // Handle parenthetical negatives: (100) → -100
+  const parenMatch = cleaned.match(/^\((.+)\)$/);
+  if (parenMatch) cleaned = `-${parenMatch[1]}`;
+
+  // Handle explicit + prefix
+  if (cleaned.startsWith("+")) cleaned = cleaned.slice(1);
+
+  const num = Number(cleaned);
+  return isNaN(num) ? null : num;
+}
+
 export function parseExcel(buffer: Buffer): ParsedRow[] {
-  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet);
 
@@ -68,25 +156,34 @@ export function parseExcel(buffer: Buffer): ParsedRow[] {
       normalized[normalizeHeader(key)] = value;
     }
 
+    const wagerAmount = cleanNumber(normalized.wagerAmount);
+    const rawPayout = cleanNumber(normalized.payout);
+    const rawProfit = cleanNumber(normalized.profit);
+
+    // If we have profit but no payout, derive: payout = profit + wager
+    let payout = rawPayout;
+    if (payout === null && rawProfit !== null && wagerAmount !== null) {
+      payout = rawProfit + wagerAmount;
+    }
+
     return {
-      rowNumber: index + 2,
-      date: normalized.date ? String(normalized.date) : null,
-      sport: normalized.sport ? String(normalized.sport) : null,
-      homeTeam: normalized.homeTeam ? String(normalized.homeTeam) : null,
-      awayTeam: normalized.awayTeam ? String(normalized.awayTeam) : null,
-      betType: normalized.betType ? String(normalized.betType) : null,
+      rowNumber: index + 2, // Row 1 is headers
+      date: parseDate(normalized.date),
+      sport: normalized.sport ? String(normalized.sport).trim() : null,
+      homeTeam: normalized.homeTeam ? String(normalized.homeTeam).trim() : null,
+      awayTeam: normalized.awayTeam ? String(normalized.awayTeam).trim() : null,
+      betType: normalized.betType ? String(normalized.betType).trim() : null,
       teamSelected: normalized.teamSelected
-        ? String(normalized.teamSelected)
+        ? String(normalized.teamSelected).trim()
         : null,
-      lineValue: normalized.lineValue ? Number(normalized.lineValue) : null,
-      odds: normalized.odds ? Number(normalized.odds) : null,
+      lineValue: cleanNumber(normalized.lineValue),
+      odds: cleanNumber(normalized.odds),
       outcome: normalized.outcome
-        ? String(normalized.outcome).toUpperCase()
+        ? String(normalized.outcome).trim().toUpperCase()
         : null,
-      wagerAmount: normalized.wagerAmount
-        ? Number(normalized.wagerAmount)
-        : null,
-      payout: normalized.payout ? Number(normalized.payout) : null,
+      wagerAmount,
+      payout,
+      profit: rawProfit,
       raw: row,
     };
   });

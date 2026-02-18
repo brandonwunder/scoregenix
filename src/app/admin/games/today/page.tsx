@@ -44,22 +44,31 @@ export default function TodaysGamesPage() {
     }
   }, []);
 
-  // Also trigger sync + settlement on each poll cycle
-  const pollGames = useCallback(async () => {
-    try {
-      // Trigger a background sync + settlement via the cron endpoint
-      await fetch("/api/cron/games").catch(() => {});
-    } catch {
-      // Silent — cron endpoint handles its own errors
-    }
-    await fetchGames();
-  }, [fetchGames]);
-
   useEffect(() => {
     fetchGames();
-    const interval = setInterval(pollGames, 60000);
-    return () => clearInterval(interval);
-  }, [fetchGames, pollGames]);
+
+    // Poll DB for game updates every 60 seconds (lightweight read)
+    const readInterval = setInterval(fetchGames, 60_000);
+
+    // Trigger full ESPN sync every 5 minutes (uses session cookie auth)
+    const syncInterval = setInterval(async () => {
+      try {
+        await fetch("/api/games/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        await fetchGames();
+      } catch {
+        // Silent
+      }
+    }, 5 * 60_000);
+
+    return () => {
+      clearInterval(readInterval);
+      clearInterval(syncInterval);
+    };
+  }, [fetchGames]);
 
   const handleSync = async () => {
     setSyncing(true);

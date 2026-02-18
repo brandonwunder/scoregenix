@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { validateUpload } from "@/lib/validation";
+import { revalidateUpload } from "@/lib/validation";
 
 export async function POST(
   req: NextRequest,
@@ -15,11 +15,11 @@ export async function POST(
   const { uploadId } = await params;
 
   try {
-    const result = await validateUpload(uploadId);
+    const result = await revalidateUpload(uploadId);
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Validation failed" },
+      { error: error.message || "Re-validation failed" },
       { status: 500 }
     );
   }

@@ -1,6 +1,8 @@
 import { GameStatus } from "@prisma/client";
+import { TZDate } from "@date-fns/tz";
 
 const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports";
+const EASTERN = "America/New_York";
 
 interface ESPNCompetitor {
   team: {
@@ -93,6 +95,10 @@ export async function fetchGamesByDate(
   sportApiKey: string,
   date: Date
 ): Promise<NormalizedGame[]> {
-  const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
-  return fetchGames(sportApiKey, dateStr);
+  // Format date in Eastern time so ESPN returns the correct day's games
+  const et = new TZDate(date, EASTERN);
+  const y = et.getFullYear();
+  const m = String(et.getMonth() + 1).padStart(2, "0");
+  const d = String(et.getDate()).padStart(2, "0");
+  return fetchGames(sportApiKey, `${y}${m}${d}`);
 }

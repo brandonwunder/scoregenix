@@ -15,9 +15,6 @@ export function getStripe(): Stripe {
 
 export function getPlanPrices(): Record<string, string> {
   return {
-    MONTHLY: process.env.STRIPE_PRICE_MONTHLY || "",
-    QUARTERLY: process.env.STRIPE_PRICE_QUARTERLY || "",
-    SEMIANNUAL: process.env.STRIPE_PRICE_SEMIANNUAL || "",
     ANNUAL: process.env.STRIPE_PRICE_ANNUAL || "",
   };
 }

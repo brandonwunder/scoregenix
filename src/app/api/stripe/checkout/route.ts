@@ -3,7 +3,7 @@ import { getStripe, getPlanPrices } from "@/lib/stripe";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
-  plan: z.enum(["MONTHLY", "QUARTERLY", "SEMIANNUAL", "ANNUAL"]),
+  plan: z.literal("ANNUAL"),
   email: z.string().email(),
   name: z.string().min(1),
   password: z.string().min(8),

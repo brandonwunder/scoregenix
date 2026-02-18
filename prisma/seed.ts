@@ -11,10 +11,14 @@ async function main() {
   );
 
   await prisma.user.upsert({
-    where: { email: process.env.ADMIN_EMAIL || "admin@scoregenix.com" },
-    update: {},
+    where: { email: process.env.ADMIN_EMAIL || "admin@test.com" },
+    update: {
+      passwordHash: adminPassword,
+      name: "Admin",
+      role: "ADMIN",
+    },
     create: {
-      email: process.env.ADMIN_EMAIL || "admin@scoregenix.com",
+      email: process.env.ADMIN_EMAIL || "admin@test.com",
       passwordHash: adminPassword,
       name: "Admin",
       role: "ADMIN",

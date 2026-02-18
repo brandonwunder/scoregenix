@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { startOfDay, endOfDay } from "date-fns";
+import { TZDate } from "@date-fns/tz";
+
+const EASTERN = "America/New_York";
 
 export async function GET() {
-  const now = new Date();
-  const dayStart = startOfDay(now);
-  const dayEnd = endOfDay(now);
+  // Use Eastern time so day boundaries match US game schedules
+  const nowET = new TZDate(new Date(), EASTERN);
+  const dayStart = startOfDay(nowET);
+  const dayEnd = endOfDay(nowET);
 
   const games = await prisma.game.findMany({
     where: {

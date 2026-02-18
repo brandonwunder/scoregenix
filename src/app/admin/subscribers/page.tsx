@@ -63,16 +63,10 @@ const STATUS_BADGE_CONFIG: Record<string, string> = {
 };
 
 const PLAN_BADGE_CONFIG: Record<string, string> = {
-  MONTHLY: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  QUARTERLY: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  SEMIANNUAL: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
   ANNUAL: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
 const PLAN_LABELS: Record<string, string> = {
-  MONTHLY: "Monthly",
-  QUARTERLY: "Quarterly",
-  SEMIANNUAL: "Semi-Annual",
   ANNUAL: "Annual",
 };
 

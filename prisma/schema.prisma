@@ -57,6 +57,7 @@ enum ValidationStatus {
 enum UploadStatus {
   PROCESSING
   VALIDATED
+  IMPORTED
   ERROR
 }
 
@@ -154,8 +155,9 @@ model Bet {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  legs BetLeg[]
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legs       BetLeg[]
+  sourceRows UploadRow[]
 
   @@map("bets")
 }
@@ -177,15 +179,18 @@ model BetLeg {
 }
 
 model ExcelUpload {
-  id             String       @id @default(cuid())
-  adminUserId    String       @map("admin_user_id")
-  fileName       String       @map("file_name")
-  uploadedAt     DateTime     @default(now()) @map("uploaded_at")
-  status         UploadStatus @default(PROCESSING)
-  totalRows      Int          @default(0) @map("total_rows")
-  correctCount   Int          @default(0) @map("correct_count")
-  flaggedCount   Int          @default(0) @map("flagged_count")
-  uncertainCount Int          @default(0) @map("uncertain_count")
+  id               String       @id @default(cuid())
+  adminUserId      String       @map("admin_user_id")
+  fileName         String       @map("file_name")
+  uploadedAt       DateTime     @default(now()) @map("uploaded_at")
+  status           UploadStatus @default(PROCESSING)
+  totalRows        Int          @default(0) @map("total_rows")
+  correctCount     Int          @default(0) @map("correct_count")
+  flaggedCount     Int          @default(0) @map("flagged_count")
+  uncertainCount   Int          @default(0) @map("uncertain_count")
+  importedCount    Int          @default(0) @map("imported_count")
+  columnMapping    Json?        @map("column_mapping")
+  normalizationLog Json?        @map("normalization_log")
 
   adminUser User        @relation(fields: [adminUserId], references: [id])
   rows      UploadRow[]
@@ -194,19 +199,28 @@ model ExcelUpload {
 }
 
 model UploadRow {
-  id               String           @id @default(cuid())
-  uploadId         String           @map("upload_id")
-  rowNumber        Int              @map("row_number")
-  rawData          Json             @map("raw_data")
-  matchedGameId    String?          @map("matched_game_id")
-  validationStatus ValidationStatus @default(UNCERTAIN) @map("validation_status")
-  originalValue    Json?            @map("original_value")
-  actualValue      Json?            @map("actual_value")
-  correctedBy      String?          @map("corrected_by")
-  correctedAt      DateTime?        @map("corrected_at")
+  id                String           @id @default(cuid())
+  uploadId          String           @map("upload_id")
+  rowNumber         Int              @map("row_number")
+  rawData           Json             @map("raw_data")
+  normalizedData    Json?            @map("normalized_data")
+  matchedGameId     String?          @map("matched_game_id")
+  validationStatus  ValidationStatus @default(UNCERTAIN) @map("validation_status")
+  uncertainReasons  Json?            @map("uncertain_reasons")
+  validationReceipt Json?            @map("validation_receipt")
+  fieldConfidence   Json?            @map("field_confidence")
+  espnSnapshot      Json?            @map("espn_snapshot")
+  originalValue     Json?            @map("original_value")
+  actualValue       Json?            @map("actual_value")
+  correctedValue    Json?            @map("corrected_value")
+  correctedBy       String?          @map("corrected_by")
+  correctedAt       DateTime?        @map("corrected_at")
+  importedBetId     String?          @map("imported_bet_id")
+  importedAt        DateTime?        @map("imported_at")
 
   upload      ExcelUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
   matchedGame Game?       @relation(fields: [matchedGameId], references: [id])
+  importedBet Bet?        @relation(fields: [importedBetId], references: [id])
 
   @@map("upload_rows")
 }

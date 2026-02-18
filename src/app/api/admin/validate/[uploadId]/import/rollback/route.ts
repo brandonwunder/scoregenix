@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { validateUpload } from "@/lib/validation";
+import { rollbackImport } from "@/lib/import-pipeline";
 
 export async function POST(
   req: NextRequest,
@@ -13,13 +13,14 @@ export async function POST(
   }
 
   const { uploadId } = await params;
+  const adminUserId = (session.user as any).id;
 
   try {
-    const result = await validateUpload(uploadId);
+    const result = await rollbackImport(uploadId, adminUserId);
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Validation failed" },
+      { error: error.message || "Rollback failed" },
       { status: 500 }
     );
   }

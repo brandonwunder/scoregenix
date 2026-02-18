@@ -7,7 +7,21 @@ import { z } from "zod";
 const correctRowSchema = z.object({
   rowId: z.string(),
   action: z.enum(["use_actual", "manual", "skip"]),
-  manualValue: z.record(z.string(), z.any()).optional(),
+  manualValue: z
+    .object({
+      date: z.string().optional(),
+      sport: z.string().optional(),
+      homeTeam: z.string().optional(),
+      awayTeam: z.string().optional(),
+      betType: z.string().optional(),
+      teamSelected: z.string().optional(),
+      lineValue: z.number().optional(),
+      odds: z.number().optional(),
+      outcome: z.string().optional(),
+      wagerAmount: z.number().optional(),
+      payout: z.number().optional(),
+    })
+    .optional(),
 });
 
 const bulkCorrectSchema = z.object({
@@ -24,80 +38,101 @@ export async function POST(
   }
 
   const { uploadId } = await params;
+  const adminId = (session.user as any).id;
+
+  // Bug #13: Verify upload belongs to current admin
+  const upload = await prisma.excelUpload.findUnique({
+    where: { id: uploadId },
+  });
+  if (!upload || upload.adminUserId !== adminId) {
+    return NextResponse.json(
+      { error: "Upload not found or access denied" },
+      { status: 404 }
+    );
+  }
 
   try {
     const body = await req.json();
     const { corrections } = bulkCorrectSchema.parse(body);
 
-    let corrected = 0;
+    // Bug #12: Wrap in transaction for atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      let corrected = 0;
 
-    for (const correction of corrections) {
-      const row = await prisma.uploadRow.findUnique({
-        where: { id: correction.rowId },
-      });
+      for (const correction of corrections) {
+        const row = await tx.uploadRow.findUnique({
+          where: { id: correction.rowId },
+        });
 
-      if (!row || row.uploadId !== uploadId) continue;
+        if (!row || row.uploadId !== uploadId) continue;
 
-      const oldValue = {
-        validationStatus: row.validationStatus,
-        originalValue: row.originalValue,
-      };
+        const oldValue = {
+          validationStatus: row.validationStatus,
+          originalValue: row.originalValue,
+          correctedValue: row.correctedValue,
+        };
 
-      let newData: any = {
-        correctedBy: (session.user as any).id,
-        correctedAt: new Date(),
-        validationStatus: "CORRECTED",
-      };
+        // Bug #11: Write to correctedValue instead of overwriting originalValue
+        const newData: any = {
+          correctedBy: adminId,
+          correctedAt: new Date(),
+          validationStatus: "CORRECTED",
+        };
 
-      if (correction.action === "use_actual") {
-        newData.originalValue = row.actualValue;
-      } else if (correction.action === "manual" && correction.manualValue) {
-        newData.originalValue = correction.manualValue;
-      } else if (correction.action === "skip") {
-        newData.validationStatus = "UNCERTAIN";
+        if (correction.action === "use_actual") {
+          newData.correctedValue = row.actualValue;
+        } else if (correction.action === "manual" && correction.manualValue) {
+          newData.correctedValue = correction.manualValue;
+        } else if (correction.action === "skip") {
+          newData.validationStatus = "UNCERTAIN";
+          newData.correctedValue = null;
+        }
+
+        await tx.uploadRow.update({
+          where: { id: correction.rowId },
+          data: newData,
+        });
+
+        await tx.auditLog.create({
+          data: {
+            userId: adminId,
+            action: `correction_${correction.action}`,
+            entityType: "upload_row",
+            entityId: correction.rowId,
+            oldValue: oldValue,
+            newValue: newData,
+          },
+        });
+
+        corrected++;
       }
 
-      await prisma.uploadRow.update({
-        where: { id: correction.rowId },
-        data: newData,
+      // Recalculate counts
+      const rows = await tx.uploadRow.findMany({
+        where: { uploadId: uploadId },
       });
 
-      await prisma.auditLog.create({
+      await tx.excelUpload.update({
+        where: { id: uploadId },
         data: {
-          userId: (session.user as any).id,
-          action: `correction_${correction.action}`,
-          entityType: "upload_row",
-          entityId: correction.rowId,
-          oldValue: oldValue,
-          newValue: newData,
+          correctCount: rows.filter(
+            (r) =>
+              r.validationStatus === "CORRECT" ||
+              r.validationStatus === "CORRECTED"
+          ).length,
+          flaggedCount: rows.filter(
+            (r) => r.validationStatus === "FLAGGED"
+          ).length,
+          uncertainCount: rows.filter(
+            (r) => r.validationStatus === "UNCERTAIN"
+          ).length,
         },
       });
 
-      corrected++;
-    }
-
-    const rows = await prisma.uploadRow.findMany({
-      where: { uploadId: uploadId },
+      return { corrected };
     });
 
-    await prisma.excelUpload.update({
-      where: { id: uploadId },
-      data: {
-        correctCount: rows.filter(
-          (r) =>
-            r.validationStatus === "CORRECT" ||
-            r.validationStatus === "CORRECTED"
-        ).length,
-        flaggedCount: rows.filter(
-          (r) => r.validationStatus === "FLAGGED"
-        ).length,
-        uncertainCount: rows.filter(
-          (r) => r.validationStatus === "UNCERTAIN"
-        ).length,
-      },
-    });
-
-    return NextResponse.json({ corrected });
+    return NextResponse.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

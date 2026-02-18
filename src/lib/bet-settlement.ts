@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { BetStatus } from "@prisma/client";
 
-function determineMoneyLineOutcome(
+export function determineMoneyLineOutcome(
   teamSelected: string,
   homeTeam: string,
   awayTeam: string,
@@ -16,7 +16,7 @@ function determineMoneyLineOutcome(
   return "LOST";
 }
 
-function determineSpreadOutcome(
+export function determineSpreadOutcome(
   teamSelected: string,
   homeTeam: string,
   homeScore: number,
