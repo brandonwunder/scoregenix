@@ -3,11 +3,16 @@
 import { motion } from 'framer-motion';
 import { cn } from "@/lib/utils"
 
+interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+  shimmer?: boolean;
+}
+
 function Skeleton({
   className,
   shimmer = true,
+  style,
   ...props
-}: React.ComponentProps<"div"> & { shimmer?: boolean }) {
+}: SkeletonProps) {
   if (shimmer) {
     return (
       <motion.div
@@ -28,8 +33,9 @@ function Skeleton({
           backgroundImage:
             'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
           backgroundSize: '200% 100%',
+          ...style,
         }}
-        {...props}
+        {...(props as any)} // Type assertion to avoid conflict between React and framer-motion event handlers
       />
     );
   }
@@ -38,6 +44,7 @@ function Skeleton({
     <div
       data-slot="skeleton"
       className={cn("bg-accent animate-pulse rounded-md", className)}
+      style={style}
       {...props}
     />
   );
