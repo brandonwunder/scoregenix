@@ -11,8 +11,9 @@ export function useAnimatedCounter({
   duration = 1000,
   enabled = true,
 }: UseAnimatedCounterOptions): number {
-  const [count, setCount] = useState(target);
+  const [count, setCount] = useState(enabled ? 0 : target);
   const rafRef = useRef<number | null>(null);
+  const countRef = useRef(enabled ? 0 : target);
 
   useEffect(() => {
     // Cancel any ongoing animation
@@ -22,11 +23,12 @@ export function useAnimatedCounter({
 
     if (!enabled) {
       setCount(target);
+      countRef.current = target;
       return;
     }
 
     const startTime = Date.now();
-    const startValue = count;
+    const startValue = countRef.current; // Use ref, not stale state
     const diff = target - startValue;
 
     const animate = () => {
@@ -38,11 +40,13 @@ export function useAnimatedCounter({
       const current = Math.floor(startValue + diff * eased);
 
       setCount(current);
+      countRef.current = current; // Update ref
 
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(animate);
       } else {
         setCount(target);
+        countRef.current = target; // Update ref to final value
         rafRef.current = null;
       }
     };
@@ -56,7 +60,6 @@ export function useAnimatedCounter({
         rafRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, duration, enabled]);
 
   return count;
