@@ -103,8 +103,8 @@ function normalizeHeader(header: string): string {
 
   // If no exact match, try without common prefixes/suffixes
   const withoutPrefixSuffix = cleaned
-    .replace(/^(bet_|my_|user_)/g, "")
-    .replace(/_(amount|value|selected)$/g, "");
+    .replace(/^(bet_|my_|user_)/, "")
+    .replace(/_(amount|value|selected)$/, "");
 
   const mappedSimplified = COLUMN_MAP[withoutPrefixSuffix];
   if (mappedSimplified) return mappedSimplified;
