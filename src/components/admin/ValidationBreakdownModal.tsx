@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   UploadIcon,
@@ -198,6 +199,46 @@ export function ValidationBreakdownModal({
         {/* Content will go here */}
         <div className="flex-1 overflow-y-auto space-y-6 pr-2">
           <FlowDiagram />
+
+          <ExpandableSection
+            id="upload"
+            icon={UploadIcon}
+            iconColor="text-blue-400"
+            title="Upload & File Processing"
+            description="When you upload a spreadsheet (.xlsx, .csv, .xls), we parse the file and extract your betting data. We accept any spreadsheet format - column names don't need to be exact."
+            expanded={expandedSections.has("upload")}
+            onToggle={() => toggleSection("upload")}
+            details={
+              <div className="space-y-3">
+                <div className="text-xs text-white/60">
+                  <p className="mb-2">When you drop or select a file, here's what happens:</p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>• <span className="text-white/60">File size limit:</span> 10MB maximum</li>
+                    <li>• <span className="text-white/60">Row limit:</span> 5,000 rows per file</li>
+                    <li>• <span className="text-white/60">Supported formats:</span> Excel (.xlsx, .xls), CSV (.csv)</li>
+                  </ul>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2">We extract these fields from your spreadsheet:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["date", "sport", "teams", "bet type", "selected team", "line", "odds", "outcome", "wager", "payout"].map((field) => (
+                      <Badge key={field} variant="outline" className="bg-white/5 text-white/50 border-white/10 text-[10px]">
+                        {field}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-1">Automatic data cleanup:</p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>• Excel serial dates (like 45312) are converted to readable dates</li>
+                    <li>• Numbers with $, commas, or parentheses are cleaned ($1,000 → 1000)</li>
+                    <li>• "PK" or "pick'em" is converted to 0 for spread bets</li>
+                  </ul>
+                </div>
+              </div>
+            }
+          />
         </div>
 
         <DialogFooter>
