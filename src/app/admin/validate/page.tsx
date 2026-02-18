@@ -48,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { ValidationBreakdownModal } from "@/components/admin/ValidationBreakdownModal";
 
 /* ───── Types ───── */
 
@@ -811,6 +812,7 @@ export default function ValidatePage() {
   );
   const [importing, setImporting] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
+  const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
 
   // Fetch upload history
   const fetchUploads = useCallback(async () => {
@@ -1184,17 +1186,28 @@ export default function ValidatePage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-8"
+          className="mb-8 flex items-start justify-between"
         >
-          <h1
-            className="text-3xl font-bold text-white sm:text-4xl"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+          <div>
+            <h1
+              className="text-3xl font-bold text-white sm:text-4xl"
+              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              Data Validation
+            </h1>
+            <p className="mt-1 text-sm text-white/50">
+              Upload, validate, and import your betting data spreadsheets
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setBreakdownModalOpen(true)}
+            className="text-white/60 hover:text-white/90 hover:bg-white/5"
           >
-            Data Validation
-          </h1>
-          <p className="mt-1 text-sm text-white/50">
-            Upload, validate, and import your betting data spreadsheets
-          </p>
+            <HelpCircleIcon className="h-4 w-4 mr-2" />
+            How It Works
+          </Button>
         </motion.div>
 
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -1748,6 +1761,11 @@ export default function ValidatePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ValidationBreakdownModal
+        open={breakdownModalOpen}
+        onOpenChange={setBreakdownModalOpen}
+      />
     </PageShell>
   );
 }
