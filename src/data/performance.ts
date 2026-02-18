@@ -2,15 +2,16 @@
  * Performance Data
  *
  * Contains equity curve data and performance statistics for the ScoreGenix
- * portfolio visualization chart. Data represents actual tracked performance
- * from January 2020 through December 2024.
+ * portfolio visualization chart. Data represents modeled portfolio performance
+ * based on backtested predictive analytics from January 2020 through December 2024.
  */
 
 /**
- * Monthly equity curve data showing portfolio growth over time.
+ * Monthly equity curve data showing modeled portfolio growth over time.
  *
  * Represents the growth of a $500,000 starting capital portfolio
  * using ScoreGenix's predictive analytics and wagering strategies.
+ * This is backtested/modeled performance data for demonstration purposes.
  *
  * Period: January 2, 2020 through December 31, 2024
  * Starting Capital: $500,000
@@ -39,7 +40,7 @@ export const equityCurveData = [
   { date: "Jun 2024", value: 2020000 },
   { date: "Sep 2024", value: 2280000 },
   { date: "Dec 2024", value: 2678855 },
-];
+] as const;
 
 /**
  * Performance statistics and metrics summary.
@@ -51,12 +52,12 @@ export const performanceStats = {
   startingCapital: 500000,
   endingCapital: 2678855,
   totalROI: 436,
-  annualROI: 107,
+  annualROI: 40,
   peakCapitalUtilization: 165923,
   peakUtilizationPercent: 33,
   periodStart: "January 2020",
   periodEnd: "December 2024",
-  yearsOfData: 15,
+  yearsOfData: 5,
   metricsAnalyzed: 50,
   sportsCount: 5,
   sports: ["MLB", "NFL", "NBA", "NCAAB", "NCAAF"] as const,
