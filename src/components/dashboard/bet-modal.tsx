@@ -194,6 +194,12 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
       return;
     }
 
+    // Only MONEY_LINE and POINT_SPREAD can be parlay legs
+    if (betType === "PARLAY") {
+      toast.error("Cannot add parlay to parlay");
+      return;
+    }
+
     const teamName = selectedTeam === "home" ? game.homeTeam : game.awayTeam;
     const teamAbbr = selectedTeam === "home" ? game.homeTeamAbbr : game.awayTeamAbbr;
     const teamLogo = selectedTeam === "home" ? game.homeTeamLogo : game.awayTeamLogo;
@@ -205,7 +211,7 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
       teamName,
       teamAbbr,
       teamLogo,
-      betType,
+      betType: betType as "MONEY_LINE" | "POINT_SPREAD", // Safe because we checked !== PARLAY above
       odds: lockedOdds,
       lineValue: betType === "POINT_SPREAD" ? game.spreadValue ?? undefined : undefined,
       gameSummary: `${game.awayTeamAbbr} @ ${game.homeTeamAbbr}`,
@@ -214,6 +220,7 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
       sportSlug: game.sportSlug,
     });
 
+    toast.success(`Added ${teamName} to parlay`);
     resetForm();
     onOpenChange(false);
   };
