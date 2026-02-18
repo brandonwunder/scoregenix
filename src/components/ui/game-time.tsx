@@ -8,7 +8,7 @@ export interface GameTimeProps {
   date: string | Date;
   variant?: 'full' | 'short' | 'relative';
   className?: string;
-  status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINAL';
+  status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINAL' | 'CANCELLED' | 'POSTPONED';
 }
 
 export function GameTime({ date, variant = 'short', className, status }: GameTimeProps) {
@@ -20,6 +20,14 @@ export function GameTime({ date, variant = 'short', className, status }: GameTim
 
   if (status === 'IN_PROGRESS') {
     return <span className={cn('font-medium text-emerald-400', className)}>Live Now</span>;
+  }
+
+  if (status === 'CANCELLED') {
+    return <span className={cn('text-red-400', className)}>Cancelled</span>;
+  }
+
+  if (status === 'POSTPONED') {
+    return <span className={cn('text-yellow-400', className)}>Postponed</span>;
   }
 
   let formatted: string;
