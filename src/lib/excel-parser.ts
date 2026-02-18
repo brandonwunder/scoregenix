@@ -56,6 +56,33 @@ const COLUMN_MAP: Record<string, string> = {
   profit: "profit",
   net: "profit",
   net_profit: "profit",
+
+  // Additional outcome variations
+  "w_win_loss": "outcome",
+  "w_winloss": "outcome",
+  "w_win/loss": "outcome",
+  "win/loss": "outcome",
+
+  // Additional team/wager variations
+  "team_wagered": "teamSelected",
+  "team_wager": "teamSelected",
+  "team_w_agbr": "teamSelected",
+  "team_w_agr": "teamSelected",
+  "teamwagered": "teamSelected",
+  "wagered_team": "teamSelected",
+
+  // Additional odds variations
+  "o_dds": "odds",
+  "odd": "odds",
+  "odss": "odds",
+  "ods": "odds",
+
+  // Additional wager amount variations
+  "w_agbr": "wagerAmount",
+  "w_agr": "wagerAmount",
+  "wagr": "wagerAmount",
+  "wgr": "wagerAmount",
+  "w": "wagerAmount",
 };
 
 function normalizeHeader(header: string): string {
