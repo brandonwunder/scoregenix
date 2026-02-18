@@ -28,10 +28,12 @@ export function Navbar() {
       className="sticky top-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Score<span className="text-emerald-400">genix</span>
-          </span>
+        <Link href="/" className="flex items-center">
+          <img
+            src="/images/logo.png"
+            alt="ScoreGenix — The Science of Winning"
+            className="h-10 w-auto"
+          />
         </Link>
 
         <div className="flex items-center gap-6">
