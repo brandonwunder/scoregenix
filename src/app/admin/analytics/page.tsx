@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   AreaChart,
@@ -186,6 +188,14 @@ function CustomTooltip({
 /* ───── Main Page ───── */
 
 export default function AdminAnalyticsPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/admin/login");
+    else if (status === "authenticated" && (session?.user as any)?.role !== "ADMIN") router.push("/admin/login");
+  }, [status, session, router]);
+
   const [stats, setStats] = useState<StatsData | null>(null);
   const [subSummary, setSubSummary] = useState<SubscriberSummary | null>(null);
   const [loading, setLoading] = useState(true);

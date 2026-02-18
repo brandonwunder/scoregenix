@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -151,6 +153,14 @@ function TableSkeleton() {
 /* ───── Main Page ───── */
 
 export default function SubscribersPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/admin/login");
+    else if (status === "authenticated" && (session?.user as any)?.role !== "ADMIN") router.push("/admin/login");
+  }, [status, session, router]);
+
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);

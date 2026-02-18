@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -189,6 +191,14 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 /* ───── Main Page ───── */
 
 export default function AdminDashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/admin/login");
+    else if (status === "authenticated" && (session?.user as any)?.role !== "ADMIN") router.push("/admin/login");
+  }, [status, session, router]);
+
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [games, setGames] = useState<GameData[]>([]);
   const [recentBets, setRecentBets] = useState<Bet[]>([]);
