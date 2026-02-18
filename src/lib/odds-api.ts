@@ -125,11 +125,12 @@ function normalizeTeamName(name: string): string {
 
 /**
  * Find best matching game for odds data
- * Uses normalized exact match first, falls back to fuzzy match
+ * Uses exact match first, falls back to normalized exact match
  */
 async function findMatchingGame(
   odds: NormalizedOdds,
-  sportId: string
+  sportId: string,
+  candidates: any[]
 ): Promise<any | null> {
   const normalizedHome = normalizeTeamName(odds.homeTeam);
   const normalizedAway = normalizeTeamName(odds.awayTeam);
@@ -140,27 +141,17 @@ async function findMatchingGame(
       sportId,
       oddsLockedAt: null,
       homeTeam: odds.homeTeam,
+      awayTeam: odds.awayTeam,
     },
   });
 
   if (game) return game;
 
-  // Try normalized match
-  const candidates = await prisma.game.findMany({
-    where: {
-      sportId,
-      oddsLockedAt: null,
-    },
-  });
-
-  // Find best match by comparing normalized names
+  // Find best match by comparing normalized names (exact match only)
   game = candidates.find((g) => {
     const gameHome = normalizeTeamName(g.homeTeam);
     const gameAway = normalizeTeamName(g.awayTeam);
-    return (
-      (gameHome === normalizedHome && gameAway === normalizedAway) ||
-      (gameHome.includes(normalizedHome) && gameAway.includes(normalizedAway))
-    );
+    return gameHome === normalizedHome && gameAway === normalizedAway;
   }) ?? null;
 
   return game;
@@ -176,12 +167,20 @@ export async function fetchAndStoreOddsForGames(
     return 0;
   }
 
+  // Load candidates once before the loop for performance
+  const candidates = await prisma.game.findMany({
+    where: {
+      sportId,
+      oddsLockedAt: null,
+    },
+  });
+
   let updated = 0;
   const errors: string[] = [];
 
   for (const odds of oddsData) {
     try {
-      const game = await findMatchingGame(odds, sportId);
+      const game = await findMatchingGame(odds, sportId, candidates);
 
       if (game) {
         await prisma.game.update({
