@@ -86,8 +86,31 @@ const COLUMN_MAP: Record<string, string> = {
 };
 
 function normalizeHeader(header: string): string {
-  const key = header.toLowerCase().trim().replace(/\s+/g, "_");
-  return COLUMN_MAP[key] || key;
+  if (!header) return "";
+
+  // Clean up the header first
+  const cleaned = header
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_")      // spaces to underscores
+    .replace(/[^\w_]/g, "")    // remove special chars except underscore
+    .replace(/_+/g, "_")       // collapse multiple underscores
+    .replace(/^_|_$/g, "");    // trim leading/trailing underscores
+
+  // Try to find a mapping
+  const mapped = COLUMN_MAP[cleaned];
+  if (mapped) return mapped;
+
+  // If no exact match, try without common prefixes/suffixes
+  const withoutPrefixSuffix = cleaned
+    .replace(/^(bet_|my_|user_)/g, "")
+    .replace(/_(amount|value|selected)$/g, "");
+
+  const mappedSimplified = COLUMN_MAP[withoutPrefixSuffix];
+  if (mappedSimplified) return mappedSimplified;
+
+  // Return cleaned version for value-based detection
+  return cleaned;
 }
 
 /**
