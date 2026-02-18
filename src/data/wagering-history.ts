@@ -1,3 +1,13 @@
+/**
+ * Represents a single wagering record from betting history.
+ *
+ * @property sport - The sport league (MLB, NFL, NBA, NCAAB, NCAAF)
+ * @property date - Date of the wager in "MM/DD/YYYY" format
+ * @property teams - Teams involved in the matchup
+ * @property type - Type of bet placed
+ * @property odds - Odds at time of bet (e.g., "-150", "+120", "-110")
+ * @property result - Outcome of the wager
+ */
 export type WagerRecord = {
   sport: "MLB" | "NFL" | "NBA" | "NCAAB" | "NCAAF";
   date: string; // "MM/DD/YYYY" format
@@ -7,6 +17,11 @@ export type WagerRecord = {
   result: "WIN" | "LOSS";
 };
 
+/**
+ * Historical wagering records spanning 2010-2025.
+ * Contains 168 bets across MLB, NFL, NBA, NCAAB, and NCAAF with an 81% win rate.
+ * Data is used to demonstrate long-term betting success and build credibility.
+ */
 export const wageringHistory: WagerRecord[] = [
   // --- 2010 ---
   { sport: "MLB", date: "04/05/2010", teams: "NY Yankees vs Boston Red Sox", type: "Moneyline", odds: "-140", result: "WIN" },
@@ -178,8 +193,25 @@ export const wageringHistory: WagerRecord[] = [
   { sport: "NCAAB", date: "03/20/2025", teams: "Duke vs Vermont", type: "Point Spread", odds: "-110", result: "WIN" },
 ];
 
-// Computed summary stats
+/**
+ * Computes summary statistics from the wagering history.
+ *
+ * @returns Summary object containing:
+ *   - total: Total number of wagers
+ *   - wins: Total wins count
+ *   - losses: Total losses count
+ *   - winRate: Overall win rate percentage as a string
+ *   - bySport: Array of per-sport statistics (sport, total, wins, losses, winRate)
+ *   - yearRange: String representing the year range (e.g., "2010–2025")
+ *
+ * @throws {Error} If wageringHistory is empty (would cause division by zero)
+ */
 export function getWageringSummary() {
+  // Edge case: handle empty array to prevent division by zero
+  if (wageringHistory.length === 0) {
+    throw new Error("Cannot compute summary: wageringHistory is empty");
+  }
+
   const total = wageringHistory.length;
   const wins = wageringHistory.filter((w) => w.result === "WIN").length;
   const losses = total - wins;
@@ -197,7 +229,7 @@ export function getWageringSummary() {
     };
   });
 
-  const years = [...new Set(wageringHistory.map((w) => w.date.split("/")[2]))].sort();
+  const years = Array.from(new Set(wageringHistory.map((w) => w.date.split("/")[2]))).sort();
 
   return { total, wins, losses, winRate, bySport, yearRange: `${years[0]}–${years[years.length - 1]}` };
 }
