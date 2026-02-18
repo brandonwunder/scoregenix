@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { LayersIcon, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useParlay } from "@/contexts/parlay-context";
 import type { GameData } from "./game-card";
 
 interface BetModalProps {
@@ -32,6 +34,21 @@ function formatOdds(odds: number | null | undefined): string {
   return odds > 0 ? `+${odds}` : `${odds}`;
 }
 
+function formatSpread(spread: number | null | undefined): string {
+  if (spread == null) return "\u2014";
+  return spread > 0 ? `+${spread}` : `${spread}`;
+}
+
+function formatLockedTime(timestamp: string | null | undefined): string {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export function BetModal({ game, open, onOpenChange }: BetModalProps) {
   const [betType, setBetType] = useState<BetType>("MONEY_LINE");
   const [selectedTeam, setSelectedTeam] = useState<"home" | "away" | null>(
@@ -39,6 +56,8 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
   );
   const [wager, setWager] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isRefreshingOdds, setIsRefreshingOdds] = useState(false);
+  const { addLeg, hasLeg } = useParlay();
 
   if (!game) return null;
 
@@ -140,6 +159,65 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
     }
   };
 
+  const handleRefreshOdds = async () => {
+    setIsRefreshingOdds(true);
+    try {
+      const res = await fetch("/api/odds/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId: game.id }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.game?.oddsLockedAt) {
+          toast.success("Odds updated successfully!");
+          // Trigger parent refresh to update game data
+          onOpenChange(false);
+          window.location.reload();
+        } else {
+          toast.info("Odds still not available from providers");
+        }
+      } else {
+        toast.error(data.error || "Failed to refresh odds");
+      }
+    } catch (error) {
+      toast.error("Error refreshing odds");
+    } finally {
+      setIsRefreshingOdds(false);
+    }
+  };
+
+  const handleAddToParlay = () => {
+    if (!selectedTeam || !hasOdds || lockedOdds == null) {
+      toast.error("Please select a team with valid odds");
+      return;
+    }
+
+    const teamName = selectedTeam === "home" ? game.homeTeam : game.awayTeam;
+    const teamAbbr = selectedTeam === "home" ? game.homeTeamAbbr : game.awayTeamAbbr;
+    const teamLogo = selectedTeam === "home" ? game.homeTeamLogo : game.awayTeamLogo;
+
+    addLeg({
+      gameId: game.id || game.externalApiId,
+      externalApiId: game.externalApiId,
+      teamSelected: selectedTeam,
+      teamName,
+      teamAbbr,
+      teamLogo,
+      betType,
+      odds: lockedOdds,
+      lineValue: betType === "POINT_SPREAD" ? game.spreadValue ?? undefined : undefined,
+      gameSummary: `${game.awayTeamAbbr} @ ${game.homeTeamAbbr}`,
+      gameDate: game.gameDate,
+      sportName: game.sportName,
+      sportSlug: game.sportSlug,
+    });
+
+    resetForm();
+    onOpenChange(false);
+  };
+
   const payout = calculatePayout();
 
   return (
@@ -204,6 +282,70 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
             </div>
           </div>
         </div>
+
+        {/* Vegas Odds Reference Section */}
+        {hasOdds && (
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-white/50">Vegas Line</Label>
+              <Badge className="bg-white/10 text-white/70 text-[10px]">
+                Locked {formatLockedTime(game.oddsLockedAt)}
+              </Badge>
+            </div>
+
+            {/* Money Line Display */}
+            <div>
+              <div className="mb-1.5 text-[10px] uppercase tracking-wider text-white/40">
+                Money Line
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-xs font-medium text-white/90">
+                    {game.awayTeamAbbr}
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    {formatOdds(game.awayMoneyLine)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-xs font-medium text-white/90">
+                    {game.homeTeamAbbr}
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    {formatOdds(game.homeMoneyLine)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Point Spread Display */}
+            {game.spreadValue != null && (
+              <div>
+                <div className="mb-1.5 text-[10px] uppercase tracking-wider text-white/40">
+                  Point Spread
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2">
+                    <span className="text-xs font-medium text-white/90">
+                      {game.awayTeamAbbr}
+                    </span>
+                    <span className="text-sm font-bold text-white">
+                      {formatSpread(-Number(game.spreadValue))} ({formatOdds(game.awaySpreadOdds)})
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2">
+                    <span className="text-xs font-medium text-white/90">
+                      {game.homeTeamAbbr}
+                    </span>
+                    <span className="text-sm font-bold text-white">
+                      {formatSpread(game.spreadValue)} ({formatOdds(game.homeSpreadOdds)})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bet Type Tabs */}
         <Tabs
@@ -456,10 +598,22 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
 
         {/* Odds unavailable warning */}
         {!hasOdds && betType !== "PARLAY" && (
-          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-center">
-            <p className="text-xs text-yellow-400">
-              Odds not yet available for this game. Bet placement is disabled.
-            </p>
+          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+            <div className="flex items-center gap-2 text-sm text-yellow-200/90">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="text-xs">
+                Odds not yet available for this game. Bet placement is disabled.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full"
+              onClick={handleRefreshOdds}
+              disabled={isRefreshingOdds}
+            >
+              {isRefreshingOdds ? "Fetching Odds..." : "Refresh Odds"}
+            </Button>
           </div>
         )}
 
@@ -488,29 +642,44 @@ export function BetModal({ game, open, onOpenChange }: BetModalProps) {
           </AnimatePresence>
         )}
 
-        {/* Place Bet Button */}
+        {/* Action Buttons */}
         {betType !== "PARLAY" && (
-          <Button
-            onClick={handlePlaceBet}
-            disabled={
-              submitting ||
-              !selectedTeam ||
-              !wager ||
-              parseFloat(wager) <= 0 ||
-              !hasOdds ||
-              lockedOdds == null
-            }
-            className="w-full bg-emerald-500 font-semibold text-black hover:bg-emerald-400 disabled:opacity-40"
-          >
-            {submitting ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-                Placing Bet...
-              </span>
-            ) : (
-              "Place Bet"
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleAddToParlay}
+              disabled={
+                !selectedTeam ||
+                !hasOdds ||
+                lockedOdds == null
+              }
+              variant="outline"
+              className="flex-1 border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
+            >
+              <LayersIcon size={16} className="mr-1.5" />
+              Add to Parlay
+            </Button>
+            <Button
+              onClick={handlePlaceBet}
+              disabled={
+                submitting ||
+                !selectedTeam ||
+                !wager ||
+                parseFloat(wager) <= 0 ||
+                !hasOdds ||
+                lockedOdds == null
+              }
+              className="flex-1 bg-emerald-500 font-semibold text-black hover:bg-emerald-400 disabled:opacity-40"
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+                  Placing...
+                </span>
+              ) : (
+                "Place Bet"
+              )}
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>

@@ -14,6 +14,11 @@ import {
   CalendarIcon,
   ActivityIcon,
   LoaderIcon,
+  TrophyIcon,
+  XCircleIcon,
+  MinusCircleIcon,
+  LayersIcon,
+  MoveHorizontalIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -29,6 +34,11 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { type GameData } from "@/components/dashboard/game-card";
+import { SportLogo } from "@/components/ui/sport-logo";
+import { TeamLogo } from "@/components/ui/team-logo";
+import { GameTime } from "@/components/ui/game-time";
+import { useNumberCounter, useCurrencyCounter } from "@/hooks/use-number-counter";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 
 /* ───── Types ───── */
 
@@ -112,13 +122,21 @@ function QuickStatCard({
   icon: Icon,
   colorClass,
   index,
+  isCurrency = false,
 }: {
   label: string;
   value: string | number;
   icon: React.ElementType;
   colorClass: string;
   index: number;
+  isCurrency?: boolean;
 }) {
+  // Use number counter for animated count-up
+  const numericValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+  const countRef = isCurrency
+    ? useCurrencyCounter(numericValue, { delay: index * 0.08 })
+    : useNumberCounter(numericValue, { duration: 1.5, delay: index * 0.08 });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -132,10 +150,11 @@ function QuickStatCard({
             {label}
           </p>
           <p
-            className={cn("mt-2 text-3xl font-bold tracking-tight", colorClass)}
+            ref={countRef}
+            className={cn("mt-2 text-3xl font-bold tracking-tight tabular-nums", colorClass)}
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            {value}
+            {typeof value === 'number' || isCurrency ? '0' : value}
           </p>
         </div>
         <div
@@ -207,6 +226,10 @@ export default function AdminDashboardPage() {
   const [loadingBets, setLoadingBets] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+
+  // Auto-animate refs
+  const [gamesTableRef] = useAutoAnimate();
+  const [betsTableRef] = useAutoAnimate();
 
   const fetchStats = useCallback(async () => {
     try {
@@ -363,12 +386,13 @@ export default function AdminDashboardPage() {
             />
             <QuickStatCard
               label="Today's P&L"
-              value={`${stats.todaysPL >= 0 ? "+" : ""}$${Math.abs(stats.todaysPL).toFixed(2)}`}
+              value={stats.todaysPL}
               icon={stats.todaysPL >= 0 ? TrendingUpIcon : TrendingDownIcon}
               colorClass={
                 stats.todaysPL >= 0 ? "text-emerald-400" : "text-red-400"
               }
               index={1}
+              isCurrency
             />
             <QuickStatCard
               label="Active Subscribers"
@@ -446,7 +470,7 @@ export default function AdminDashboardPage() {
                       </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody ref={gamesTableRef}>
                     {games.map((game) => {
                       const statusConfig =
                         GAME_STATUS_CONFIG[game.status] ||
@@ -460,30 +484,49 @@ export default function AdminDashboardPage() {
                           className="border-white/5 hover:bg-white/[0.03] transition-colors"
                         >
                           <TableCell>
-                            <Badge className="bg-emerald-500/15 text-emerald-400 text-[10px]">
-                              {game.sportName}
-                            </Badge>
+                            <SportLogo
+                              sportSlug={game.sportSlug}
+                              size="sm"
+                              showName
+                            />
                           </TableCell>
                           <TableCell className="text-xs text-white/80">
-                            <span className="font-medium">
-                              {game.awayTeamAbbr}
-                            </span>
-                            <span className="mx-1 text-white/30">@</span>
-                            <span className="font-medium">
-                              {game.homeTeamAbbr}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <TeamLogo
+                                src={game.awayTeamLogo}
+                                abbr={game.awayTeamAbbr}
+                                alt={game.awayTeam}
+                                size="xs"
+                                league={game.sportSlug}
+                                showTeamColor
+                              />
+                              <span className="font-medium">
+                                {game.awayTeamAbbr}
+                              </span>
+                              <span className="text-white/30">@</span>
+                              <TeamLogo
+                                src={game.homeTeamLogo}
+                                abbr={game.homeTeamAbbr}
+                                alt={game.homeTeam}
+                                size="xs"
+                                league={game.sportSlug}
+                                showTeamColor
+                              />
+                              <span className="font-medium">
+                                {game.homeTeamAbbr}
+                              </span>
+                            </div>
                           </TableCell>
                           <TableCell className="text-center text-xs font-medium tabular-nums text-white/70">
-                            {showScore
-                              ? `${game.awayScore ?? 0} - ${game.homeScore ?? 0}`
-                              : new Date(game.gameDate).toLocaleTimeString(
-                                  "en-US",
-                                  {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  }
-                                )}
+                            {showScore ? (
+                              `${game.awayScore ?? 0} - ${game.homeScore ?? 0}`
+                            ) : (
+                              <GameTime
+                                date={game.gameDate}
+                                variant="short"
+                                status={game.status}
+                              />
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <Badge
@@ -557,7 +600,7 @@ export default function AdminDashboardPage() {
                       </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody ref={betsTableRef}>
                     {recentBets.map((bet) => {
                       const primaryLeg = bet.legs[0];
                       const game = primaryLeg?.game;
@@ -588,7 +631,7 @@ export default function AdminDashboardPage() {
                           <TableCell>
                             <Badge
                               className={cn(
-                                "text-[10px]",
+                                "text-[10px] flex items-center gap-1 w-fit",
                                 bet.betType === "PARLAY"
                                   ? "bg-purple-500/15 text-purple-400"
                                   : bet.betType === "POINT_SPREAD"
@@ -596,6 +639,13 @@ export default function AdminDashboardPage() {
                                     : "bg-emerald-500/15 text-emerald-400"
                               )}
                             >
+                              {bet.betType === "PARLAY" ? (
+                                <LayersIcon size={10} />
+                              ) : bet.betType === "POINT_SPREAD" ? (
+                                <MoveHorizontalIcon size={10} />
+                              ) : (
+                                <TrendingUpIcon size={10} />
+                              )}
                               {BET_TYPE_LABELS[bet.betType] || bet.betType}
                             </Badge>
                           </TableCell>
@@ -605,11 +655,15 @@ export default function AdminDashboardPage() {
                           <TableCell className="text-center">
                             <Badge
                               className={cn(
-                                "text-[10px]",
+                                "text-[10px] flex items-center gap-1 w-fit mx-auto",
                                 STATUS_COLORS[bet.status] ||
                                   "bg-white/10 text-white/50"
                               )}
                             >
+                              {bet.status === "WON" && <TrophyIcon size={10} />}
+                              {bet.status === "LOST" && <XCircleIcon size={10} />}
+                              {bet.status === "PENDING" && <ClockIcon size={10} className="animate-pulse" />}
+                              {bet.status === "PUSH" && <MinusCircleIcon size={10} />}
                               {bet.status}
                             </Badge>
                           </TableCell>

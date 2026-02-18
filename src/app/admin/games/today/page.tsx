@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GameCard, type GameData } from "@/components/dashboard/game-card";
 import { BetModal } from "@/components/dashboard/bet-modal";
+import { ParlayProvider } from "@/contexts/parlay-context";
+import { ParlaySlip } from "@/components/parlay/parlay-slip";
 
-export default function TodaysGamesPage() {
+function TodaysGamesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -232,5 +234,15 @@ export default function TodaysGamesPage() {
         onOpenChange={setBetModalOpen}
       />
     </PageShell>
+  );
+}
+
+// Wrap the page with ParlayProvider
+export default function TodaysGamesPageWithParlay() {
+  return (
+    <ParlayProvider>
+      <TodaysGamesPage />
+      <ParlaySlip />
+    </ParlayProvider>
   );
 }
