@@ -44,11 +44,22 @@ export default function TodaysGamesPage() {
     }
   }, []);
 
+  // Also trigger sync + settlement on each poll cycle
+  const pollGames = useCallback(async () => {
+    try {
+      // Trigger a background sync + settlement via the cron endpoint
+      await fetch("/api/cron/games").catch(() => {});
+    } catch {
+      // Silent — cron endpoint handles its own errors
+    }
+    await fetchGames();
+  }, [fetchGames]);
+
   useEffect(() => {
     fetchGames();
-    const interval = setInterval(fetchGames, 60000);
+    const interval = setInterval(pollGames, 60000);
     return () => clearInterval(interval);
-  }, [fetchGames]);
+  }, [fetchGames, pollGames]);
 
   const handleSync = async () => {
     setSyncing(true);

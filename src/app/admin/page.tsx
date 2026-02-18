@@ -256,7 +256,10 @@ export default function AdminDashboardPage() {
     fetchRecentBets();
 
     const interval = setInterval(() => {
+      // Trigger background sync + settlement, then refresh games
+      fetch("/api/cron/games").catch(() => {});
       fetchGames();
+      fetchRecentBets();
     }, 60000);
 
     return () => clearInterval(interval);
