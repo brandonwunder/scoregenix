@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { oddsLogger } from "./odds-logger";
 
 const ODDS_BASE = "https://api.the-odds-api.com/v4";
 
@@ -49,6 +50,34 @@ const ODDS_SPORT_MAP: Record<string, string> = {
   ncaab: "basketball_ncaab",
 };
 
+/**
+ * Retry a function with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  let lastError: Error | unknown;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(
+          `Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 function extractOdds(bookmakers: OddsBookmaker[]): {
   moneyLine: OddsMarket | undefined;
   spreads: OddsMarket | undefined;
@@ -66,43 +95,83 @@ export async function fetchOdds(
   sportSlug: string
 ): Promise<NormalizedOdds[]> {
   const sportKey = ODDS_SPORT_MAP[sportSlug];
-  if (!sportKey) return [];
+  if (!sportKey) {
+    oddsLogger.log({
+      sport: sportSlug,
+      action: "fetch",
+      success: false,
+      error: "Sport not mapped to Odds API key",
+    });
+    return [];
+  }
 
   const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) {
-    console.warn("ODDS_API_KEY not set, skipping odds fetch");
+  if (!apiKey || apiKey === "your-odds-api-key") {
+    oddsLogger.log({
+      sport: sportSlug,
+      action: "fetch",
+      success: false,
+      error: "ODDS_API_KEY not configured",
+    });
+    console.error(
+      "❌ ODDS_API_KEY not set! Get a free key at https://the-odds-api.com/"
+    );
     return [];
   }
 
   const url = `${ODDS_BASE}/sports/${sportKey}/odds?apiKey=${apiKey}&regions=us&markets=h2h,spreads&oddsFormat=american`;
-  const res = await fetch(url, { next: { revalidate: 3600 } });
 
-  if (!res.ok) {
-    console.error(`Odds API error: ${res.status}`);
+  try {
+    const res = await retryWithBackoff(
+      async () => {
+        const response = await fetch(url, { next: { revalidate: 3600 } });
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+        return response;
+      },
+      2, // Max 2 retries (3 total attempts)
+      2000 // Start with 2 second delay
+    );
+
+    const events: OddsEvent[] = await res.json();
+
+    oddsLogger.log({
+      sport: sportSlug,
+      action: "fetch",
+      success: true,
+      gamesTotal: events.length,
+    });
+
+    return events.map((event) => {
+      const { moneyLine, spreads } = extractOdds(event.bookmakers);
+
+      const mlHome = moneyLine?.outcomes.find((o) => o.name === event.home_team);
+      const mlAway = moneyLine?.outcomes.find((o) => o.name === event.away_team);
+      const spHome = spreads?.outcomes.find((o) => o.name === event.home_team);
+      const spAway = spreads?.outcomes.find((o) => o.name === event.away_team);
+
+      return {
+        homeTeam: event.home_team,
+        awayTeam: event.away_team,
+        moneyLineHome: mlHome?.price ?? null,
+        moneyLineAway: mlAway?.price ?? null,
+        spreadHome: spHome?.price ?? null,
+        spreadAway: spAway?.price ?? null,
+        spreadPointHome: spHome?.point ?? null,
+        spreadPointAway: spAway?.point ?? null,
+      };
+    });
+  } catch (error) {
+    oddsLogger.log({
+      sport: sportSlug,
+      action: "fetch",
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    console.error(`Odds fetch error for ${sportSlug}:`, error);
     return [];
   }
-
-  const events: OddsEvent[] = await res.json();
-
-  return events.map((event) => {
-    const { moneyLine, spreads } = extractOdds(event.bookmakers);
-
-    const mlHome = moneyLine?.outcomes.find((o) => o.name === event.home_team);
-    const mlAway = moneyLine?.outcomes.find((o) => o.name === event.away_team);
-    const spHome = spreads?.outcomes.find((o) => o.name === event.home_team);
-    const spAway = spreads?.outcomes.find((o) => o.name === event.away_team);
-
-    return {
-      homeTeam: event.home_team,
-      awayTeam: event.away_team,
-      moneyLineHome: mlHome?.price ?? null,
-      moneyLineAway: mlAway?.price ?? null,
-      spreadHome: spHome?.price ?? null,
-      spreadAway: spAway?.price ?? null,
-      spreadPointHome: spHome?.point ?? null,
-      spreadPointAway: spAway?.point ?? null,
-    };
-  });
 }
 
 /**
@@ -163,6 +232,14 @@ export async function fetchAndStoreOddsForGames(
 ): Promise<number> {
   const oddsData = await fetchOdds(sportSlug);
   if (oddsData.length === 0) {
+    oddsLogger.log({
+      sport: sportSlug,
+      action: "store",
+      success: false,
+      error: "No odds data available",
+      gamesTotal: 0,
+      gamesUpdated: 0,
+    });
     console.warn(`No odds data fetched for ${sportSlug}`);
     return 0;
   }
@@ -210,16 +287,18 @@ export async function fetchAndStoreOddsForGames(
     }
   }
 
-  if (errors.length > 0) {
-    console.error(
-      `Odds fetch errors for ${sportSlug}:`,
-      errors.join("\n")
-    );
-  }
+  oddsLogger.log({
+    sport: sportSlug,
+    action: "store",
+    success: updated > 0 || errors.length === 0,
+    gamesTotal: oddsData.length,
+    gamesUpdated: updated,
+    error: errors.length > 0 ? `${errors.length} errors` : undefined,
+  });
 
-  console.log(
-    `Odds update complete for ${sportSlug}: ${updated}/${oddsData.length} games updated`
-  );
+  if (errors.length > 0) {
+    console.error(`Odds storage errors for ${sportSlug}:`, errors.join("\n"));
+  }
 
   return updated;
 }
