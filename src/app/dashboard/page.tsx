@@ -9,6 +9,8 @@ import { GameCard, type GameData } from "@/components/dashboard/game-card";
 import { BetModal } from "@/components/dashboard/bet-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ParlayProvider } from "@/contexts/parlay-context";
+import { ParlaySlip } from "@/components/parlay/parlay-slip";
 
 const SPORT_FILTERS = [
   { label: "All", value: "all" },
@@ -56,7 +58,7 @@ function GameCardSkeleton() {
   );
 }
 
-export default function DashboardPage() {
+function DashboardPage() {
   const { status } = useSession();
   const router = useRouter();
 
@@ -258,5 +260,15 @@ export default function DashboardPage() {
         onOpenChange={setBetModalOpen}
       />
     </PageShell>
+  );
+}
+
+// Wrap the page with ParlayProvider
+export default function DashboardPageWithParlay() {
+  return (
+    <ParlayProvider>
+      <DashboardPage />
+      <ParlaySlip />
+    </ParlayProvider>
   );
 }

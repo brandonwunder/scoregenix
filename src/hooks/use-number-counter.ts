@@ -15,7 +15,7 @@ export interface NumberCounterOptions {
 export function useNumberCounter(
   value: number,
   options: NumberCounterOptions = {}
-): React.RefObject<HTMLSpanElement> {
+) {
   const {
     duration = 1.5,
     delay = 0,
@@ -65,7 +65,7 @@ export function useNumberCounter(
 export function useCurrencyCounter(
   amount: number,
   options: Omit<NumberCounterOptions, 'prefix' | 'decimals' | 'separator'> = {}
-): React.RefObject<HTMLSpanElement> {
+) {
   return useNumberCounter(Math.abs(amount), {
     ...options,
     prefix: amount < 0 ? '-$' : '$',
@@ -77,7 +77,7 @@ export function useCurrencyCounter(
 export function usePercentageCounter(
   percentage: number,
   options: Omit<NumberCounterOptions, 'suffix' | 'decimals'> = {}
-): React.RefObject<HTMLSpanElement> {
+) {
   return useNumberCounter(percentage, {
     ...options,
     suffix: '%',

@@ -162,6 +162,84 @@ function FlowDiagram() {
   );
 }
 
+function StatusReferenceTable() {
+  const statuses = [
+    {
+      name: "CORRECT",
+      badgeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
+      meaning: "All validation passes succeeded, outcome matches ESPN data",
+      action: "Ready to import",
+    },
+    {
+      name: "FLAGGED",
+      badgeClass: "bg-amber-500/15 text-amber-400 border-amber-500/20",
+      meaning: "Validation found errors (wrong outcome, data mismatch)",
+      action: "Review and manually correct",
+    },
+    {
+      name: "UNCERTAIN",
+      badgeClass: "bg-white/10 text-white/50 border-white/10",
+      meaning:
+        "Can't verify yet (game in progress, low confidence match, missing data)",
+      action: "Wait and re-validate, or manually correct",
+    },
+    {
+      name: "CORRECTED",
+      badgeClass: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+      meaning: "You manually corrected this row",
+      action: "Ready to import",
+    },
+  ];
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/10">
+        <h3 className="text-base font-medium text-white">Status Reference</h3>
+        <p className="text-xs text-white/50 mt-1">
+          Quick guide to what each status badge means
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/5">
+              <th className="px-4 py-2 text-left text-xs font-medium text-white/50">
+                Status
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-white/50">
+                Meaning
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-white/50">
+                What To Do
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {statuses.map((status) => (
+              <tr
+                key={status.name}
+                className="border-b border-white/5 last:border-0"
+              >
+                <td className="px-4 py-3">
+                  <Badge className={cn("text-[10px]", status.badgeClass)}>
+                    {status.name}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3 text-xs text-white/60">
+                  {status.meaning}
+                </td>
+                <td className="px-4 py-3 text-xs text-white/50">
+                  {status.action}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function ValidationBreakdownModal({
   open,
   onOpenChange,
@@ -588,6 +666,8 @@ export function ValidationBreakdownModal({
               </div>
             }
           />
+
+          <StatusReferenceTable />
         </div>
 
         <DialogFooter>
