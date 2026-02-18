@@ -149,13 +149,13 @@ function QuickStatCard({
           <p className="text-xs font-medium uppercase tracking-wider text-white/40">
             {label}
           </p>
-          <p
+          <span
             ref={countRef}
-            className={cn("mt-2 text-3xl font-bold tracking-tight tabular-nums", colorClass)}
+            className={cn("mt-2 block text-3xl font-bold tracking-tight tabular-nums", colorClass)}
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
           >
             {typeof value === 'number' || isCurrency ? '0' : value}
-          </p>
+          </span>
         </div>
         <div
           className={cn(
