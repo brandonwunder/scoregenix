@@ -21,6 +21,7 @@ import {
   CheckCircle2Icon,
   ChevronRightIcon,
   ChevronDownIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 
 interface ValidationBreakdownModalProps {
@@ -235,6 +236,354 @@ export function ValidationBreakdownModal({
                     <li>• Numbers with $, commas, or parentheses are cleaned ($1,000 → 1000)</li>
                     <li>• "PK" or "pick'em" is converted to 0 for spread bets</li>
                   </ul>
+                </div>
+              </div>
+            }
+          />
+
+          <ExpandableSection
+            id="normalize"
+            icon={RefreshCwIcon}
+            iconColor="text-purple-400"
+            title="Normalization"
+            description='Before validation, we normalize your data to handle different spreadsheet formats. For example, "ML", "moneyline", and "money line" all become "Money Line". This ensures consistency.'
+            expanded={expandedSections.has("normalize")}
+            onToggle={() => toggleSection("normalize")}
+            details={
+              <div className="space-y-3">
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">Bet Type Normalization:</p>
+                  <div className="space-y-1.5 text-white/50">
+                    <div>• "spread", "ATS", "pts" → <span className="text-emerald-400">Point Spread</span></div>
+                    <div>• "ML", "moneyline", "money line" → <span className="text-emerald-400">Money Line</span></div>
+                    <div>• "O/U", "over/under", "total" → <span className="text-emerald-400">Over/Under</span></div>
+                  </div>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">Outcome Normalization:</p>
+                  <div className="space-y-1.5 text-white/50">
+                    <div>• "W", "Won", "Win" → <span className="text-emerald-400">WON</span></div>
+                    <div>• "L", "Lost", "Lose" → <span className="text-red-400">LOST</span></div>
+                    <div>• "Push", "Tie", "Draw" → <span className="text-amber-400">PUSH</span></div>
+                    <div>• "Void", "Cancelled" → <span className="text-white/40">VOID</span></div>
+                  </div>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">Odds Format Detection:</p>
+                  <p className="text-white/50">
+                    We detect American odds (-110, +150) vs Decimal odds (1.91, 2.50) and
+                    convert everything to American format for consistency.
+                  </p>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">Sport Mapping:</p>
+                  <p className="text-white/50 mb-2">
+                    We map 25+ sport variants to canonical names:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["NFL", "NBA", "MLB", "NHL", "MLS", "NCAAF", "NCAAB"].map((sport) => (
+                      <Badge key={sport} className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px]">
+                        {sport}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            }
+          />
+
+          <ExpandableSection
+            id="validate"
+            icon={ShieldCheckIcon}
+            iconColor="text-emerald-400"
+            title="Validation (4 Passes)"
+            description="Every row goes through 4 validation passes. If all passes succeed, the row is marked CORRECT ✅. If checks fail, it's FLAGGED ⚠️. If we can't verify due to missing data, it's UNCERTAIN ❓."
+            expanded={expandedSections.has("validate")}
+            onToggle={() => toggleSection("validate")}
+            details={
+              <div className="space-y-4">
+                {/* Pass 1 */}
+                <div className="rounded-md bg-white/[0.02] border border-white/5 p-3">
+                  <h4 className="text-xs font-medium text-white/80 mb-2">
+                    Pass 1: Game Matching
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-white/50">
+                    <li>
+                      • Resolves team names using fuzzy matching (handles "Lakers", "LA
+                      Lakers", "Los Angeles Lakers")
+                    </li>
+                    <li>
+                      • Confidence scoring: Must be &gt;0.7 to proceed (1.0 = exact match,
+                      0.7 = good fuzzy match)
+                    </li>
+                    <li>
+                      • Looks up game in database by teams + date (Eastern timezone)
+                    </li>
+                    <li>• If game not found, syncs from ESPN API in real-time</li>
+                    <li>
+                      • Verifies your selected team is actually one of the two teams in
+                      the game
+                    </li>
+                    <li>• Creates frozen snapshot of ESPN data at validation time</li>
+                  </ul>
+                  <div className="mt-2 pt-2 border-t border-white/5">
+                    <p className="text-[10px] text-white/40 mb-1">
+                      Uncertain reasons from this pass:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        "NO_GAME_MATCH",
+                        "GAME_NOT_FINAL",
+                        "LOW_CONFIDENCE_TEAM",
+                        "ESPN_FETCH_FAILED",
+                      ].map((reason) => (
+                        <code
+                          key={reason}
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-white/40"
+                        >
+                          {reason}
+                        </code>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pass 2 */}
+                <div className="rounded-md bg-white/[0.02] border border-white/5 p-3">
+                  <h4 className="text-xs font-medium text-white/80 mb-2">
+                    Pass 2: Outcome Validation
+                  </h4>
+                  <p className="text-xs text-white/50 mb-2">
+                    Only runs if game is FINAL with scores. Uses the same outcome logic as
+                    the betting system.
+                  </p>
+                  <ul className="space-y-1.5 text-xs text-white/50">
+                    <li>
+                      • <span className="text-white/60">Money Line:</span> Compares your
+                      team's score to opponent's score
+                    </li>
+                    <li>
+                      • <span className="text-white/60">Point Spread:</span> Applies the
+                      spread (e.g., Lakers -5.5 needs to win by 6+)
+                    </li>
+                    <li>
+                      • <span className="text-white/60">Over/Under:</span> Adds both scores
+                      and compares to the line
+                    </li>
+                  </ul>
+                  <p className="text-xs text-white/50 mt-2">
+                    If calculated outcome doesn't match your reported outcome, row is{" "}
+                    <span className="text-amber-400">FLAGGED</span> with an error. The math
+                    is recorded in the validation receipt.
+                  </p>
+                </div>
+
+                {/* Pass 3 */}
+                <div className="rounded-md bg-white/[0.02] border border-white/5 p-3">
+                  <h4 className="text-xs font-medium text-white/80 mb-2">
+                    Pass 3: Financial Validation
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-white/50">
+                    <li>
+                      • Calculates expected payout from wager + odds (allows 2% tolerance
+                      for rounding)
+                    </li>
+                    <li>
+                      • Cross-checks your odds against game's locked odds from Odds API
+                    </li>
+                    <li>
+                      • Flags negative wagers, payouts on losing bets, unreasonable odds
+                    </li>
+                  </ul>
+                  <div className="mt-2 pt-2 border-t border-white/5">
+                    <p className="text-[10px] text-white/40 mb-1">Severity levels:</p>
+                    <div className="space-y-1 text-[10px]">
+                      <div className="text-red-400">• Error: Outcome is wrong</div>
+                      <div className="text-amber-400">• Warning: Payout mismatch</div>
+                      <div className="text-blue-400">• Info: Odds differ from market</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pass 4 */}
+                <div className="rounded-md bg-white/[0.02] border border-white/5 p-3">
+                  <h4 className="text-xs font-medium text-white/80 mb-2">
+                    Pass 4: Cross-Row Checks
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-white/50">
+                    <li>
+                      • <span className="text-white/60">Duplicate detection:</span> Same
+                      date + teams + selected team + bet type + wager = likely duplicate
+                    </li>
+                    <li>
+                      • <span className="text-white/60">Score consistency:</span> Multiple
+                      rows for same game shouldn't imply conflicting scores
+                    </li>
+                  </ul>
+                  <p className="text-xs text-white/40 mt-2">
+                    Returns warnings only, doesn't fail validation.
+                  </p>
+                </div>
+              </div>
+            }
+          />
+
+          <ExpandableSection
+            id="review"
+            icon={PenLineIcon}
+            iconColor="text-amber-400"
+            title="Manual Review & Corrections"
+            description="After validation, you can review rows and manually correct any flagged issues. Your corrections are saved separately - we never overwrite the original uploaded data."
+            expanded={expandedSections.has("review")}
+            onToggle={() => toggleSection("review")}
+            details={
+              <div className="space-y-3">
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">What you can do:</p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>
+                      • <span className="text-amber-400">FLAGGED rows:</span> Click to
+                      expand, see what's wrong, manually correct the values
+                    </li>
+                    <li>
+                      • <span className="text-white/50">UNCERTAIN rows:</span> Wait for
+                      games to finish, then hit "Re-validate" to check again
+                    </li>
+                    <li>
+                      • <span className="text-blue-400">Corrections:</span> Saved to{" "}
+                      <code className="px-1 py-0.5 rounded bg-white/10 text-[10px]">
+                        correctedValue
+                      </code>{" "}
+                      field (original data stays in{" "}
+                      <code className="px-1 py-0.5 rounded bg-white/10 text-[10px]">
+                        originalValue
+                      </code>
+                      )
+                    </li>
+                  </ul>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">Transparency features:</p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>
+                      • <span className="text-white/60">Validation Receipt:</span> Every
+                      row shows a proof chain with timestamps and pass results
+                    </li>
+                    <li>
+                      • <span className="text-white/60">Field Confidence:</span> See
+                      confidence scores (0-1) for team matching, sport detection, etc.
+                    </li>
+                  </ul>
+                </div>
+                <p className="text-xs text-white/50">
+                  Once corrected, the row becomes{" "}
+                  <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/20 text-[10px]">
+                    CORRECTED
+                  </Badge>{" "}
+                  and is ready to import.
+                </p>
+              </div>
+            }
+          />
+
+          <ExpandableSection
+            id="import"
+            icon={ImportIcon}
+            iconColor="text-blue-400"
+            title="Import to Betting History"
+            description="When validation is complete, click Import to create Bet records in your betting history. These become your personal bets in the dashboard. Only CORRECT and CORRECTED rows are imported."
+            expanded={expandedSections.has("import")}
+            onToggle={() => toggleSection("import")}
+            details={
+              <div className="space-y-3">
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">Pre-import validation:</p>
+                  <p className="text-white/50 mb-2">
+                    Before import, we check which rows are ready (must have matched game,
+                    valid outcome). You'll see a summary showing:
+                  </p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>• Ready count</li>
+                    <li>• Total wager amount</li>
+                    <li>• Outcome breakdown (Wins/Losses/Pushes)</li>
+                    <li>• List of any not-ready rows with reasons</li>
+                  </ul>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">What gets created:</p>
+                  <p className="text-white/50 mb-2">
+                    For each row, we create a{" "}
+                    <code className="px-1 py-0.5 rounded bg-white/10 text-[10px]">
+                      Bet
+                    </code>{" "}
+                    and{" "}
+                    <code className="px-1 py-0.5 rounded bg-white/10 text-[10px]">
+                      BetLeg
+                    </code>{" "}
+                    record:
+                  </p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>
+                      • Uses corrected data if available, otherwise normalized, otherwise
+                      original
+                    </li>
+                    <li>
+                      • Bet status set from validated outcome (WON/LOST/PUSH)
+                    </li>
+                    <li>
+                      • <code className="px-1 py-0.5 rounded bg-white/10 text-[10px]">
+                        placedAt
+                      </code>{" "}
+                      and{" "}
+                      <code className="px-1 py-0.5 rounded bg-white/10 text-[10px]">
+                        settledAt
+                      </code>{" "}
+                      set to game date (historical bets)
+                    </li>
+                    <li>• Auto-assigned to your admin user account</li>
+                    <li>
+                      • Note added: "Imported from upload {"{fileName}"}, row {"{N}"}
+                      "
+                    </li>
+                  </ul>
+                </div>
+                <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3">
+                  <p className="text-xs text-emerald-400 font-medium mb-1">
+                    ✓ All-or-nothing transaction
+                  </p>
+                  <p className="text-xs text-white/50">
+                    If any row fails during import, the entire import is rolled back. No
+                    partial imports.
+                  </p>
+                </div>
+                <div className="text-xs text-white/60">
+                  <p className="mb-2 font-medium text-white/70">After import:</p>
+                  <ul className="space-y-1.5 text-white/50">
+                    <li>
+                      • Upload status changes to{" "}
+                      <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/20 text-[10px]">
+                        IMPORTED
+                      </Badge>
+                    </li>
+                    <li>
+                      • Each row is linked to its created bet (you can trace back)
+                    </li>
+                    <li>• Bets appear in your dashboard and betting history</li>
+                  </ul>
+                </div>
+                <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangleIcon className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-amber-400 font-medium mb-1">
+                        Rollback available
+                      </p>
+                      <p className="text-xs text-white/50">
+                        If needed, you can rollback an import to delete all created bets
+                        and reset the upload to VALIDATED status.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             }
