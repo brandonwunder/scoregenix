@@ -7,7 +7,7 @@ import { z } from "zod";
 const correctRowSchema = z.object({
   rowId: z.string(),
   action: z.enum(["use_actual", "manual", "skip"]),
-  manualValue: z.record(z.any()).optional(),
+  manualValue: z.record(z.string(), z.any()).optional(),
 });
 
 const bulkCorrectSchema = z.object({
