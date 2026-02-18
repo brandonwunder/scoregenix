@@ -34,10 +34,13 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { type GameData } from "@/components/dashboard/game-card";
+import { BetModal } from "@/components/dashboard/bet-modal";
 import { TeamLogo } from "@/components/ui/team-logo";
 import { GameTime } from "@/components/ui/game-time";
 import { useNumberCounter, useCurrencyCounter } from "@/hooks/use-number-counter";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { ParlayProvider } from "@/contexts/parlay-context";
+import { ParlaySlip } from "@/components/parlay/parlay-slip";
 
 /* ───── Helpers ───── */
 
@@ -225,7 +228,7 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 
 /* ───── Main Page ───── */
 
-export default function AdminDashboardPage() {
+function AdminDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -246,6 +249,15 @@ export default function AdminDashboardPage() {
   // Auto-animate refs
   const [gamesTableRef] = useAutoAnimate();
   const [betsTableRef] = useAutoAnimate();
+
+  // Bet modal state
+  const [selectedGame, setSelectedGame] = useState<GameData | null>(null);
+  const [betModalOpen, setBetModalOpen] = useState(false);
+
+  const handlePlaceBet = (game: GameData) => {
+    setSelectedGame(game);
+    setBetModalOpen(true);
+  };
 
   const fetchStats = useCallback(async () => {
     try {
@@ -484,6 +496,9 @@ export default function AdminDashboardPage() {
                       <TableHead className="text-xs text-white/50 text-right">
                         Status
                       </TableHead>
+                      <TableHead className="text-xs text-white/50 text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody ref={gamesTableRef}>
@@ -560,6 +575,17 @@ export default function AdminDashboardPage() {
                               )}
                               {statusConfig.label}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs font-medium"
+                              onClick={() => handlePlaceBet(game)}
+                              disabled={game.status === "FINAL" || game.status === "CANCELLED"}
+                            >
+                              Place Bet
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -697,6 +723,23 @@ export default function AdminDashboardPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Bet Modal */}
+      <BetModal
+        game={selectedGame}
+        open={betModalOpen}
+        onOpenChange={setBetModalOpen}
+      />
     </PageShell>
+  );
+}
+
+// Wrap the page with ParlayProvider
+export default function AdminDashboardPageWithParlay() {
+  return (
+    <ParlayProvider>
+      <AdminDashboardPage />
+      <ParlaySlip />
+    </ParlayProvider>
   );
 }
